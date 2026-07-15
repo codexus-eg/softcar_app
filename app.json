@@ -1,0 +1,124 @@
+{
+  "expo": {
+    "name": "سوفت كار شاتل - الركاب",
+    "slug": "softcarshuttle",
+    "scheme": [
+      "softcarpassenger",
+      "com.softcar.passengersss",
+      "com.softcar.passenger"
+    ],
+    "version": "1.13.0",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/bf068d74-eb79-4428-a802-3e78f849420e",
+      "checkAutomatically": "ON_LOAD",
+      "fallbackToCacheTimeout": 0
+    },
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "icon": "./assets/icon.png",
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "plugins": [
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash.png",
+          "resizeMode": "contain",
+          "backgroundColor": "#050505"
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "color": "#D32F2F",
+          "defaultChannel": "softcar-updates"
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "تستخدم SOFT CAR موقعك لعرض أقرب نقاط الصعود والرحلات المتاحة على خرائط Google."
+        }
+      ],
+      "expo-status-bar",
+      "expo-updates",
+      "expo-secure-store",
+      "expo-sharing",
+      [
+        "expo-calendar",
+        {
+          "calendarPermission": "تستخدم SOFT CAR التقويم لإضافة مواعيد رحلاتك وتنبيهات الصعود فقط."
+        }
+      ],
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "استخدم بصمة الوجه لفتح حساب سوفت كار المحفوظ بأمان."
+        }
+      ]
+    ],
+    "ios": {
+      "bundleIdentifier": "com.softcar.passengersss",
+      "buildNumber": "18",
+      "supportsTablet": false,
+      "usesAppleSignIn": false,
+      "associatedDomains": [
+        "applinks:softcarshuttle.com"
+      ],
+      "infoPlist": {
+        "CFBundleAllowMixedLocalizations": true,
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSLocationWhenInUseUsageDescription": "تستخدم SOFT CAR موقعك لعرض أقرب نقاط الصعود والرحلات المتاحة على خرائط Google.",
+        "NSAppTransportSecurity": {
+          "NSAllowsArbitraryLoads": false
+        }
+      }
+    },
+    "android": {
+      "package": "com.softcar.passengersss",
+      "versionCode": 18,
+      "permissions": [
+        "INTERNET",
+        "ACCESS_NETWORK_STATE",
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION",
+        "POST_NOTIFICATIONS",
+        "VIBRATE",
+        "READ_CALENDAR",
+        "WRITE_CALENDAR"
+      ],
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#050505"
+      },
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "https",
+              "host": "softcarshuttle.com",
+              "pathPrefix": "/trip/view"
+            }
+          ],
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
+        }
+      ]
+    },
+    "extra": {
+      "apiUrl": "https://softcarshuttle.com",
+      "eas": {
+        "projectId": "bf068d74-eb79-4428-a802-3e78f849420e"
+      }
+    },
+    "owner": "sharbashs-organization"
+  }
+}
