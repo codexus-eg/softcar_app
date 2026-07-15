@@ -1,0 +1,50 @@
+workflows:
+  softcar-passenger-ios-workflow:
+    name: Soft Car Passenger iOS Build and Publish to TestFlight
+    max_build_duration: 120
+    instance_type: mac_mini_m2
+
+    integrations:
+      app_store_connect: noourway # تأكد أن هذا هو نفس الاسم المربوط في CodeMagic
+
+    environment:
+      node: default
+      xcode: latest
+      cocoapods: default
+
+      ios_signing:
+        provisioning_profiles:
+          - softcar_Manual_Profile # تأكد أن هذا الاسم يطابق الاسم في CodeMagic
+        certificates:
+          - ios_cert_manual # تأكد من اسم شهادة التوزيع التي رفعتها في CodeMagic
+
+    scripts:
+      - name: Install dependencies
+        script: npm install
+
+      - name: Prebuild (Generate iOS Folder)
+        script: |
+          # هذه الخطوة ضرورية لأن مشروع Expo لا يحتوي على مجلد ios
+          npx expo prebuild --platform ios
+
+      - name: Install CocoaPods
+        script: |
+          cd ios
+          pod install
+
+      - name: Build IPA
+        script: |
+          # تأكد من اسم الـ Scheme والـ Workspace
+          # عادةً ما يكون اسم الـ scheme هو اسم التطبيق
+          xcode-project build-ipa --workspace ios/softcarshuttle.xcworkspace --scheme softcarshuttle
+
+    artifacts:
+      - build/ios/ipa/*.ipa
+
+    publishing:
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: true
+      email:
+        recipients:
+          - codexus.eg@gmail.com
