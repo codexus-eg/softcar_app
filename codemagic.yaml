@@ -8,7 +8,7 @@ workflows:
       app_store_connect: noourway # تأكد أن هذا هو نفس الاسم المربوط في CodeMagic
 
     environment:
-      node: default
+      node: 20
       xcode: latest
       cocoapods: default
 
