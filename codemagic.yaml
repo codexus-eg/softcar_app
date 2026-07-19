@@ -34,10 +34,11 @@ workflows:
 
       - name: Build IPA
         script: |
-          # العثور على المجلد الذي ينتهي بـ .xcworkspace بدقة
           WORKSPACE=$(find ios -maxdepth 1 -name "*.xcworkspace" -type d | head -n 1)
-          # استخراج اسم المجلد (الـ Scheme) بدون الامتداد
           SCHEME=$(basename "$WORKSPACE" .xcworkspace)
+
+          # خطوة ضرورية لتهيئة ملفات التوقيع وإنشاء export_options.plist
+          xcode-project use-profiles
 
           echo "Building Workspace: $WORKSPACE with Scheme: $SCHEME"
 
