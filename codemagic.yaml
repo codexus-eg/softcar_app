@@ -34,9 +34,10 @@ workflows:
 
       - name: Build IPA
         script: |
-          # تأكد من اسم الـ Scheme والـ Workspace
-          # عادةً ما يكون اسم الـ scheme هو اسم التطبيق
-          xcode-project build-ipa --workspace ios/softcarshuttle.xcworkspace --scheme softcarshuttle
+          WORKSPACE=$(ls ios/*.xcworkspace | head -n 1)
+          SCHEME=$(basename "$WORKSPACE" .xcworkspace)
+          echo "Building Workspace: $WORKSPACE with Scheme: $SCHEME"
+          xcode-project build-ipa --workspace "$WORKSPACE" --scheme "$SCHEME"
 
     artifacts:
       - build/ios/ipa/*.ipa
