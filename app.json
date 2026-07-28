@@ -7,7 +7,7 @@
       "com.softcar.passengersss",
       "com.softcar.passenger"
     ],
-    "version": "1.13.0",
+    "version": "1.13.1",
     "runtimeVersion": {
       "policy": "appVersion"
     },
@@ -19,9 +19,7 @@
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
     "icon": "./assets/icon.png",
-    "assetBundlePatterns": [
-      "**/*"
-    ],
+    "assetBundlePatterns": ["**/*"],
     "plugins": [
       [
         "expo-splash-screen",
@@ -63,12 +61,10 @@
     ],
     "ios": {
       "bundleIdentifier": "com.softcar.passengersss",
-      "buildNumber": "18",
+      "buildNumber": "19",
       "supportsTablet": false,
       "usesAppleSignIn": false,
-      "associatedDomains": [
-        "applinks:softcarshuttle.com"
-      ],
+      "associatedDomains": ["applinks:softcarshuttle.com"],
       "infoPlist": {
         "CFBundleAllowMixedLocalizations": true,
         "ITSAppUsesNonExemptEncryption": false,
@@ -80,7 +76,7 @@
     },
     "android": {
       "package": "com.softcar.passengersss",
-      "versionCode": 18,
+      "versionCode": 19,
       "permissions": [
         "INTERNET",
         "ACCESS_NETWORK_STATE",
@@ -106,10 +102,7 @@
               "pathPrefix": "/trip/view"
             }
           ],
-          "category": [
-            "BROWSABLE",
-            "DEFAULT"
-          ]
+          "category": ["BROWSABLE", "DEFAULT"]
         }
       ]
     },

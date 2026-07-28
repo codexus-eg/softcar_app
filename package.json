@@ -1,6 +1,6 @@
 {
   "name": "softcar-mobile-passenger",
-  "version": "1.13.0",
+  "version": "1.13.1",
   "private": true,
   "main": "node_modules/expo/AppEntry.js",
   "scripts": {

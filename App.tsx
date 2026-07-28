@@ -945,8 +945,8 @@ function buildRouteMapHtml(
       z-index: 2;
       border-radius: 12px;
       border: 1px solid rgba(255,255,255,0.12);
-      background: rgba(2,6,23,0.82);
-      color: #e2e8f0;
+      background: rgba(0, 0, 0,0.82);
+      color: #E5E5E5;
       padding: 10px 12px;
       font: 600 12px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       opacity: 0;
@@ -1012,8 +1012,8 @@ function buildRouteMapHtml(
       const themes = {
         bike: { accent: '#ef4444', glow: '#fecaca', label: 'BIKE', width: 18, length: 40, windowCount: 0 },
         car: { accent: '#dc2626', glow: '#fecaca', label: 'CAR', width: 27, length: 48, windowCount: 2 },
-        microbus: { accent: '#111827', glow: '#e5e7eb', label: 'MICRO', width: 31, length: 56, windowCount: 3 },
-        minibus: { accent: '#0A0A0A', glow: '#cbd5e1', label: 'MINI', width: 35, length: 62, windowCount: 4 },
+        microbus: { accent: '#111111', glow: '#e5e7eb', label: 'MICRO', width: 31, length: 56, windowCount: 3 },
+        minibus: { accent: '#0A0A0A', glow: '#D4D4D4', label: 'MINI', width: 35, length: 62, windowCount: 4 },
         bus: { accent: '#991b1b', glow: '#fecaca', label: 'BUS', width: 39, length: 68, windowCount: 5 }
       };
       return Object.assign({ kind }, themes[kind]);
@@ -1021,7 +1021,7 @@ function buildRouteMapHtml(
 
     function vehicleBody(kind, theme) {
       if (kind === 'bike') {
-        return '<g><ellipse cx="0" cy="-18" rx="5.5" ry="8.4" fill="#020617" stroke="#f8fafc" stroke-width="2"/><ellipse cx="0" cy="18" rx="5.5" ry="8.4" fill="#020617" stroke="#f8fafc" stroke-width="2"/><path d="M0 -18 C-8 -9 -8 9 0 18 C8 9 8 -9 0 -18Z" fill="url(#body)" stroke="#ffffff" stroke-width="1.8"/><path d="M0 -24 L-10 -14 M0 -24 L10 -14" stroke="#020617" stroke-width="2.4" stroke-linecap="round"/><circle cx="0" cy="-4" r="6.2" fill="' + theme.accent + '" stroke="#ffffff" stroke-width="1.5"/></g>';
+        return '<g><ellipse cx="0" cy="-18" rx="5.5" ry="8.4" fill="#050505" stroke="#f8fafc" stroke-width="2"/><ellipse cx="0" cy="18" rx="5.5" ry="8.4" fill="#050505" stroke="#f8fafc" stroke-width="2"/><path d="M0 -18 C-8 -9 -8 9 0 18 C8 9 8 -9 0 -18Z" fill="url(#body)" stroke="#ffffff" stroke-width="1.8"/><path d="M0 -24 L-10 -14 M0 -24 L10 -14" stroke="#050505" stroke-width="2.4" stroke-linecap="round"/><circle cx="0" cy="-4" r="6.2" fill="' + theme.accent + '" stroke="#ffffff" stroke-width="1.5"/></g>';
       }
       const halfW = theme.width / 2;
       const halfL = theme.length / 2;
@@ -1036,7 +1036,7 @@ function buildRouteMapHtml(
       const routeStripe = kind === 'car'
         ? '<path d="M' + (-halfW + 4) + ' ' + (-halfL + 7) + 'H' + (halfW - 4) + '" stroke="' + theme.accent + '" stroke-width="3" stroke-linecap="round"/>'
         : '<path d="M' + (halfW - 5) + ' ' + (-halfL + 9) + 'V' + (halfL - 10) + '" stroke="' + theme.accent + '" stroke-width="3.5" stroke-linecap="round"/>';
-      return '<g><rect x="' + (-halfW - 6) + '" y="' + (-halfL + 8) + '" width="5.5" height="13" rx="2.5" fill="#020617" opacity="0.9"/><rect x="' + (halfW + 0.5) + '" y="' + (-halfL + 8) + '" width="5.5" height="13" rx="2.5" fill="#020617" opacity="0.9"/><rect x="' + (-halfW - 6) + '" y="' + (halfL - 22) + '" width="5.5" height="13" rx="2.5" fill="#020617" opacity="0.9"/><rect x="' + (halfW + 0.5) + '" y="' + (halfL - 22) + '" width="5.5" height="13" rx="2.5" fill="#020617" opacity="0.9"/><path d="M' + (-halfW) + ' ' + (-halfL + 9) + 'C' + (-halfW) + ' ' + (-halfL + 2) + ' ' + (-halfW + 6) + ' ' + (-halfL) + ' 0 ' + (-halfL) + 'C' + (halfW - 6) + ' ' + (-halfL) + ' ' + halfW + ' ' + (-halfL + 2) + ' ' + halfW + ' ' + (-halfL + 9) + 'V' + (halfL - 9) + 'C' + halfW + ' ' + (halfL - 2) + ' ' + (halfW - 6) + ' ' + halfL + ' 0 ' + halfL + 'C' + (-halfW + 6) + ' ' + halfL + ' ' + (-halfW) + ' ' + (halfL - 2) + ' ' + (-halfW) + ' ' + (halfL - 9) + 'Z" fill="url(#body)" stroke="#ffffff" stroke-width="2"/><rect x="' + (-halfW + 5) + '" y="' + windowTop + '" width="' + (theme.width - 10) + '" height="' + windowHeight + '" rx="4" fill="url(#glass)"/>' + windows + '<rect x="' + (-halfW + 7) + '" y="' + (halfL - 12) + '" width="' + (theme.width - 14) + '" height="4" rx="2" fill="#111827" opacity="0.42"/>' + routeStripe + '<circle cx="' + (-halfW + 5) + '" cy="' + (halfL - 7) + '" r="2" fill="#ef4444"/><circle cx="' + (halfW - 5) + '" cy="' + (halfL - 7) + '" r="2" fill="#ef4444"/></g>';
+      return '<g><rect x="' + (-halfW - 6) + '" y="' + (-halfL + 8) + '" width="5.5" height="13" rx="2.5" fill="#050505" opacity="0.9"/><rect x="' + (halfW + 0.5) + '" y="' + (-halfL + 8) + '" width="5.5" height="13" rx="2.5" fill="#050505" opacity="0.9"/><rect x="' + (-halfW - 6) + '" y="' + (halfL - 22) + '" width="5.5" height="13" rx="2.5" fill="#050505" opacity="0.9"/><rect x="' + (halfW + 0.5) + '" y="' + (halfL - 22) + '" width="5.5" height="13" rx="2.5" fill="#050505" opacity="0.9"/><path d="M' + (-halfW) + ' ' + (-halfL + 9) + 'C' + (-halfW) + ' ' + (-halfL + 2) + ' ' + (-halfW + 6) + ' ' + (-halfL) + ' 0 ' + (-halfL) + 'C' + (halfW - 6) + ' ' + (-halfL) + ' ' + halfW + ' ' + (-halfL + 2) + ' ' + halfW + ' ' + (-halfL + 9) + 'V' + (halfL - 9) + 'C' + halfW + ' ' + (halfL - 2) + ' ' + (halfW - 6) + ' ' + halfL + ' 0 ' + halfL + 'C' + (-halfW + 6) + ' ' + halfL + ' ' + (-halfW) + ' ' + (halfL - 2) + ' ' + (-halfW) + ' ' + (halfL - 9) + 'Z" fill="url(#body)" stroke="#ffffff" stroke-width="2"/><rect x="' + (-halfW + 5) + '" y="' + windowTop + '" width="' + (theme.width - 10) + '" height="' + windowHeight + '" rx="4" fill="url(#glass)"/>' + windows + '<rect x="' + (-halfW + 7) + '" y="' + (halfL - 12) + '" width="' + (theme.width - 14) + '" height="4" rx="2" fill="#111111" opacity="0.42"/>' + routeStripe + '<circle cx="' + (-halfW + 5) + '" cy="' + (halfL - 7) + '" r="2" fill="#ef4444"/><circle cx="' + (halfW - 5) + '" cy="' + (halfL - 7) + '" r="2" fill="#ef4444"/></g>';
     }
 
     function buildVehicleIcon(seats, heading) {
@@ -1048,13 +1048,13 @@ function buildRouteMapHtml(
         '<svg xmlns="http://www.w3.org/2000/svg" width="92" height="92" viewBox="0 0 92 92">' +
         '<defs>' +
         '<linearGradient id="body" x1="0" x2="1" y1="0" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset="0.52" stop-color="#f8fafc"/><stop offset="1" stop-color="' + theme.glow + '"/></linearGradient>' +
-        '<linearGradient id="glass" x1="0" x2="1" y1="0" y2="1"><stop offset="0" stop-color="#020617"/><stop offset="1" stop-color="#475569"/></linearGradient>' +
-        '<filter id="shadow" x="-60%" y="-60%" width="220%" height="220%"><feDropShadow dx="0" dy="5" stdDeviation="4.5" flood-color="#020617" flood-opacity="0.38"/><feDropShadow dx="0" dy="0" stdDeviation="6" flood-color="#facc15" flood-opacity="0.72"/></filter>' +
+        '<linearGradient id="glass" x1="0" x2="1" y1="0" y2="1"><stop offset="0" stop-color="#050505"/><stop offset="1" stop-color="#737373"/></linearGradient>' +
+        '<filter id="shadow" x="-60%" y="-60%" width="220%" height="220%"><feDropShadow dx="0" dy="5" stdDeviation="4.5" flood-color="#050505" flood-opacity="0.38"/><feDropShadow dx="0" dy="0" stdDeviation="6" flood-color="#D32F2F" flood-opacity="0.72"/></filter>' +
         '</defs>' +
-        '<ellipse cx="46" cy="71" rx="27" ry="8" fill="#020617" opacity="0.22"/>' +
-        '<circle cx="46" cy="46" r="39" fill="none" stroke="#facc15" stroke-width="3" opacity=".8"/>' +
+        '<ellipse cx="46" cy="71" rx="27" ry="8" fill="#050505" opacity="0.22"/>' +
+        '<circle cx="46" cy="46" r="39" fill="none" stroke="#D32F2F" stroke-width="3" opacity=".8"/>' +
         '<g transform="translate(46 46) rotate(' + rotation + ') scale(1.08)" filter="url(#shadow)">' + body + '</g>' +
-        '<g transform="translate(68 18)"><rect x="-15" y="-9" width="30" height="18" rx="9" fill="#020617" stroke="' + theme.accent + '" stroke-width="2"/><text x="0" y="4" text-anchor="middle" font-family="Arial, sans-serif" font-size="9" font-weight="900" fill="#ffffff">' + seatLabel + '</text></g>' +
+        '<g transform="translate(68 18)"><rect x="-15" y="-9" width="30" height="18" rx="9" fill="#050505" stroke="' + theme.accent + '" stroke-width="2"/><text x="0" y="4" text-anchor="middle" font-family="Arial, sans-serif" font-size="9" font-weight="900" fill="#ffffff">' + seatLabel + '</text></g>' +
         '</svg>';
       return {
         url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg),
@@ -1065,14 +1065,14 @@ function buildRouteMapHtml(
 
     async function init() {
       if (!apiKey) {
-        document.body.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;padding:20px;color:#94a3b8;font:600 12px/1.6 -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif;text-align:center;background:#050505">مفتاح Google Maps غير متوفر لعرض الخريطة.</div>';
+        document.body.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;padding:20px;color:#A3A3A3;font:600 12px/1.6 -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif;text-align:center;background:#050505">مفتاح Google Maps غير متوفر لعرض الخريطة.</div>';
         return;
       }
 
       try {
         await loadScript('https://maps.googleapis.com/maps/api/js?key=' + encodeURIComponent(apiKey) + '&libraries=geometry');
       } catch (error) {
-        document.body.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;padding:20px;color:#94a3b8;font:600 12px/1.6 -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif;text-align:center;background:#050505">تعذر تحميل Google Maps على هذا الجهاز.</div>';
+        document.body.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;padding:20px;color:#A3A3A3;font:600 12px/1.6 -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif;text-align:center;background:#050505">تعذر تحميل Google Maps على هذا الجهاز.</div>';
         return;
       }
 
@@ -1102,7 +1102,7 @@ function buildRouteMapHtml(
             fontWeight: '700',
           },
           icon: buildStopIcon(
-            index === 0 ? '#7c3aed' : index === points.length - 1 ? '#10b981' : '#111827',
+            index === 0 ? '#D32F2F' : index === points.length - 1 ? '#EF5350' : '#111111',
             '#f8fafc',
             index === 0 || index === points.length - 1 ? 9 : 7
           ),
@@ -1429,6 +1429,8 @@ function PassengerApp() {
   const [reviewSubmitting, setReviewSubmitting] = useState(false);
   const [notificationStatusNote, setNotificationStatusNote] = useState('جارٍ التحقق من قناة الإشعارات...');
   const [settingsSaving, setSettingsSaving] = useState(false);
+  const [deleteAccountBusy, setDeleteAccountBusy] = useState(false);
+  const [travelReadinessExpanded, setTravelReadinessExpanded] = useState(false);
   const [biometricAvailable, setBiometricAvailable] = useState(false);
   const [biometricEnabled, setBiometricEnabled] = useState(false);
 
@@ -3747,6 +3749,41 @@ function PassengerApp() {
     handledNotificationResponseId.current = '';
   }
 
+  async function handleDeleteAccount() {
+    if (!token || deleteAccountBusy) return;
+
+    setDeleteAccountBusy(true);
+    try {
+      await apiRequest('/api/mobile/account', token, { method: 'DELETE' });
+      await handleLogout();
+      Alert.alert(
+        'تم حذف الحساب',
+        'تم تعطيل حساب الراكب وحذف بيانات الدخول من هذا الجهاز. تظل سجلات الحجوزات المالية محفوظة داخل النظام للمراجعة.'
+      );
+    } catch (error) {
+      Alert.alert('تعذر حذف الحساب', error instanceof Error ? error.message : 'حاول مرة أخرى أو تواصل مع خدمة العملاء.');
+    } finally {
+      setDeleteAccountBusy(false);
+    }
+  }
+
+  function confirmDeleteAccount() {
+    Alert.alert(
+      'حذف الحساب',
+      'سيتم تعطيل الحساب وتسجيل خروجك من التطبيق. لا يمكن تنفيذ الحذف إذا كان لديك حجز نشط.',
+      [
+        { text: 'إلغاء', style: 'cancel' },
+        {
+          text: 'حذف الحساب',
+          style: 'destructive',
+          onPress: () => {
+            void handleDeleteAccount();
+          },
+        },
+      ]
+    );
+  }
+
   function openPassengerMenuTab(nextTab: PassengerTab) {
     setActiveTab(nextTab);
     setMenuOpen(false);
@@ -3909,7 +3946,7 @@ function PassengerApp() {
                 value={identifier}
                 onChangeText={setIdentifier}
                 placeholder="البريد الإلكتروني أو الهاتف"
-                placeholderTextColor="#93a1b6"
+                placeholderTextColor="#A3A3A3"
                 autoCapitalize="none"
                 style={styles.loginInput}
               />
@@ -3918,7 +3955,7 @@ function PassengerApp() {
                   value={password}
                   onChangeText={setPassword}
                   placeholder="كلمة المرور"
-                  placeholderTextColor="#93a1b6"
+                  placeholderTextColor="#A3A3A3"
                   secureTextEntry={!passwordVisible}
                   autoCapitalize="none"
                   textContentType="password"
@@ -3959,7 +3996,7 @@ function PassengerApp() {
                   setResetResendSeconds(0);
                 }}
                 placeholder="01XXXXXXXXX"
-                placeholderTextColor="#93a1b6"
+                placeholderTextColor="#A3A3A3"
                 keyboardType="phone-pad"
                 style={styles.loginInput}
               />
@@ -3970,7 +4007,7 @@ function PassengerApp() {
                     value={resetOtp}
                     onChangeText={(value) => setResetOtp(value.replace(/\D+/g, '').slice(0, 6))}
                     placeholder="••••••"
-                    placeholderTextColor="#5f6b7d"
+                    placeholderTextColor="#737373"
                     keyboardType="number-pad"
                     textContentType="oneTimeCode"
                     maxLength={6}
@@ -3982,7 +4019,7 @@ function PassengerApp() {
                       value={resetPassword}
                       onChangeText={setResetPassword}
                       placeholder={"\u0643\u0644\u0645\u0629 \u0645\u0631\u0648\u0631 \u062c\u062f\u064a\u062f\u0629"}
-                      placeholderTextColor="#93a1b6"
+                      placeholderTextColor="#A3A3A3"
                       secureTextEntry={!resetPasswordVisible}
                       autoCapitalize="none"
                       textContentType="newPassword"
@@ -4000,7 +4037,7 @@ function PassengerApp() {
                       value={resetPasswordConfirm}
                       onChangeText={setResetPasswordConfirm}
                       placeholder={"\u062a\u0623\u0643\u064a\u062f \u0643\u0644\u0645\u0629 \u0627\u0644\u0645\u0631\u0648\u0631"}
-                      placeholderTextColor="#93a1b6"
+                      placeholderTextColor="#A3A3A3"
                       secureTextEntry={!resetPasswordConfirmVisible}
                       autoCapitalize="none"
                       textContentType="newPassword"
@@ -4100,7 +4137,7 @@ function PassengerApp() {
                 value={registerOtp}
                 onChangeText={(value) => setRegisterOtp(value.replace(/\D+/g, '').slice(0, 6))}
                 placeholder="••••••"
-                placeholderTextColor="#5f6b7d"
+                placeholderTextColor="#737373"
                 keyboardType="number-pad"
                 textContentType="oneTimeCode"
                 maxLength={6}
@@ -4181,14 +4218,14 @@ function PassengerApp() {
                 value={registerName}
                 onChangeText={setRegisterName}
                 placeholder="الاسم الكامل"
-                placeholderTextColor="#93a1b6"
+                placeholderTextColor="#A3A3A3"
                 style={styles.loginInput}
               />
               <TextInput
                 value={registerEmail}
                 onChangeText={setRegisterEmail}
                 placeholder="البريد الإلكتروني (اختياري عند استخدام الهاتف)"
-                placeholderTextColor="#93a1b6"
+                placeholderTextColor="#A3A3A3"
                 autoCapitalize="none"
                 style={styles.loginInput}
               />
@@ -4196,7 +4233,7 @@ function PassengerApp() {
                 value={registerPhone}
                 onChangeText={setRegisterPhone}
                 placeholder="الهاتف (01XXXXXXXXX)"
-                placeholderTextColor="#93a1b6"
+                placeholderTextColor="#A3A3A3"
                 keyboardType="phone-pad"
                 style={styles.loginInput}
               />
@@ -4205,7 +4242,7 @@ function PassengerApp() {
                   value={registerPassword}
                   onChangeText={setRegisterPassword}
                   placeholder="كلمة المرور (8 أحرف على الأقل)"
-                  placeholderTextColor="#93a1b6"
+                  placeholderTextColor="#A3A3A3"
                   secureTextEntry={!registerPasswordVisible}
                   autoCapitalize="none"
                   textContentType="newPassword"
@@ -4223,7 +4260,7 @@ function PassengerApp() {
                   value={registerPasswordConfirm}
                   onChangeText={setRegisterPasswordConfirm}
                   placeholder="تأكيد كلمة المرور"
-                  placeholderTextColor="#93a1b6"
+                  placeholderTextColor="#A3A3A3"
                   secureTextEntry={!registerPasswordConfirmVisible}
                   autoCapitalize="none"
                   textContentType="newPassword"
@@ -4307,18 +4344,40 @@ function PassengerApp() {
         ) : null}
 
         {activeTab === 'reserve' || liveActiveReservation ? (
-          <PassengerTravelReadiness
-            online={isOnline}
-            notificationReady={notificationPermissionStatus === 'granted'}
-            locationReady={Boolean(passengerCoords)}
-            hasReservation={Boolean(activeReservation)}
-            paymentReady={!activeReservation || ['PAID', 'AUTHORIZED', 'PAID_CASH_COLLECTED', 'CASH_COLLECTED', 'PENDING_CASH_COLLECTION'].includes(String(activeReservation.paymentStatus || '').toUpperCase())}
-            driverAssigned={Boolean(activeReservation?.trip.driverProfile)}
-            onEnableLocation={() => void handleNearestTripSearch()}
-            onEnableNotifications={() => void openNotificationSettings()}
-            onOpenHistory={() => setActiveTab('history')}
-            onOpenSupport={() => setActiveTab('support')}
-          />
+          <View style={styles.travelReadinessShell}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="جاهزية الرحلة"
+              onPress={() => setTravelReadinessExpanded((current) => !current)}
+              style={styles.travelReadinessHeader}
+            >
+              <View style={styles.travelReadinessHeaderCopy}>
+                <Text style={styles.travelReadinessEyebrow}>متابعة قبل التحرك</Text>
+                <Text style={styles.travelReadinessTitle}>جاهزية الرحلة</Text>
+                <Text style={styles.travelReadinessHint}>
+                  {travelReadinessExpanded ? 'اضغط لإخفاء فحص الموقع والإشعارات والدفع.' : 'اضغط لعرض فحص الموقع والإشعارات والدفع.'}
+                </Text>
+              </View>
+              <View style={styles.travelReadinessToggle}>
+                <Text style={styles.travelReadinessToggleText}>{travelReadinessExpanded ? 'إخفاء' : 'عرض'}</Text>
+                <Text style={styles.travelReadinessToggleIcon}>{travelReadinessExpanded ? '−' : '+'}</Text>
+              </View>
+            </Pressable>
+            {travelReadinessExpanded ? (
+              <PassengerTravelReadiness
+                online={isOnline}
+                notificationReady={notificationPermissionStatus === 'granted'}
+                locationReady={Boolean(passengerCoords)}
+                hasReservation={Boolean(activeReservation)}
+                paymentReady={!activeReservation || ['PAID', 'AUTHORIZED', 'PAID_CASH_COLLECTED', 'CASH_COLLECTED', 'PENDING_CASH_COLLECTION'].includes(String(activeReservation.paymentStatus || '').toUpperCase())}
+                driverAssigned={Boolean(activeReservation?.trip.driverProfile)}
+                onEnableLocation={() => void handleNearestTripSearch()}
+                onEnableNotifications={() => void openNotificationSettings()}
+                onOpenHistory={() => setActiveTab('history')}
+                onOpenSupport={() => setActiveTab('support')}
+              />
+            ) : null}
+          </View>
         ) : null}
 
         {liveActiveReservation ? (
@@ -4423,7 +4482,7 @@ function PassengerApp() {
                     value={fromQuery}
                     onChangeText={setFromQuery}
                     placeholder="نقطة الصعود"
-                    placeholderTextColor="#9ca3af"
+                    placeholderTextColor="#A3A3A3"
                     style={styles.searchInput}
                   />
                   {pickupSearchOptions.length > 0 ? (
@@ -4443,7 +4502,7 @@ function PassengerApp() {
                     value={toQuery}
                     onChangeText={setToQuery}
                     placeholder="نقطة النزول"
-                    placeholderTextColor="#9ca3af"
+                    placeholderTextColor="#A3A3A3"
                     style={styles.searchInput}
                   />
                   {dropoffSearchOptions.length > 0 ? (
@@ -4463,7 +4522,7 @@ function PassengerApp() {
                     value={serviceDateQuery}
                     onChangeText={(value) => setServiceDateQuery(value.replace(/[^\d-]/g, '').slice(0, 10))}
                     placeholder="YYYY-MM-DD"
-                    placeholderTextColor="#9ca3af"
+                    placeholderTextColor="#A3A3A3"
                     style={styles.searchInput}
                   />
                 </View>
@@ -4472,7 +4531,7 @@ function PassengerApp() {
                 value={query}
                 onChangeText={setQuery}
                 placeholder="بحث إضافي باسم الرحلة أو الوجهة"
-                placeholderTextColor="#93a1b6"
+                placeholderTextColor="#A3A3A3"
                 style={styles.searchInput}
               />
               <View style={styles.routeActionRow}>
@@ -4719,7 +4778,7 @@ function PassengerApp() {
                 value={walletTopupAmount}
                 onChangeText={setWalletTopupAmount}
                 placeholder="قيمة الشحن"
-                placeholderTextColor="#93a1b6"
+                placeholderTextColor="#A3A3A3"
                 keyboardType="decimal-pad"
                 editable={!walletTopupSubmitting}
                 style={[styles.searchInput, styles.walletSenderInput]}
@@ -4732,7 +4791,7 @@ function PassengerApp() {
                     value={walletTopupSender}
                     onChangeText={setWalletTopupSender}
                     placeholder="رقم الهاتف المحول منه"
-                    placeholderTextColor="#93a1b6"
+                    placeholderTextColor="#A3A3A3"
                     keyboardType="phone-pad"
                     editable={!walletTopupSubmitting}
                     style={[styles.searchInput, styles.walletSenderInput]}
@@ -5246,14 +5305,14 @@ function PassengerApp() {
                 value={supportSubject}
                 onChangeText={setSupportSubject}
                 placeholder="عنوان الطلب"
-                placeholderTextColor="#94a3b8"
+                placeholderTextColor="#A3A3A3"
                 style={styles.supportInput}
               />
               <TextInput
                 value={supportMessage}
                 onChangeText={setSupportMessage}
                 placeholder="اكتب ما حدث، رقم الرحلة أو التاريخ أو مشكلة الدفع"
-                placeholderTextColor="#94a3b8"
+                placeholderTextColor="#A3A3A3"
                 style={[styles.supportInput, styles.supportTextArea]}
                 multiline
               />
@@ -5552,7 +5611,7 @@ function PassengerApp() {
                   }))
                 }
                 placeholder="رقم جهة اتصال الطوارئ"
-                placeholderTextColor="#94a3b8"
+                placeholderTextColor="#A3A3A3"
                 keyboardType="phone-pad"
                 style={styles.supportInput}
               />
@@ -5616,6 +5675,21 @@ function PassengerApp() {
                   <Text style={styles.benefitText}>{item.text}</Text>
                 </Pressable>
               ))}
+            </View>
+            <View style={styles.deleteAccountPanel}>
+              <View style={styles.deleteAccountCopy}>
+                <Text style={styles.deleteAccountTitle}>حذف حساب الراكب</Text>
+                <Text style={styles.deleteAccountText}>
+                  يعطل الحساب ويمسح بيانات الدخول من التطبيق. لا يمكن الحذف إذا كان لديك حجز نشط.
+                </Text>
+              </View>
+              <Pressable
+                style={[styles.deleteAccountButton, deleteAccountBusy && styles.disabledActionButton]}
+                onPress={confirmDeleteAccount}
+                disabled={deleteAccountBusy}
+              >
+                <Text style={styles.deleteAccountButtonText}>{deleteAccountBusy ? 'جاري الحذف...' : 'حذف الحساب'}</Text>
+              </Pressable>
             </View>
             <Pressable style={styles.signOutButton} onPress={handleLogout}>
               <Text style={styles.signOutButtonText}>تسجيل الخروج</Text>
@@ -5701,7 +5775,7 @@ function PassengerApp() {
               value={reviewBody}
               onChangeText={setReviewBody}
               placeholder="اكتب ملاحظتك عن الرحلة أو السائق (اختياري)"
-              placeholderTextColor="#7F8A9A"
+              placeholderTextColor="#A3A3A3"
               multiline
               maxLength={1000}
               textAlignVertical="top"
@@ -5758,7 +5832,7 @@ function PassengerApp() {
               value={refundReason}
               onChangeText={setRefundReason}
               placeholder="اكتب سبب الاسترداد بالتفصيل"
-              placeholderTextColor="#7F8A9A"
+              placeholderTextColor="#A3A3A3"
               multiline
               textAlignVertical="top"
               editable={!refundSubmitting}
@@ -6006,7 +6080,7 @@ function PassengerApp() {
               value={notificationSearch}
               onChangeText={setNotificationSearch}
               placeholder="ابحث في عنوان الإشعار أو محتواه..."
-              placeholderTextColor="#718096"
+              placeholderTextColor="#737373"
               style={styles.notificationSearchInput}
             />
 
@@ -6460,7 +6534,7 @@ function PassengerApp() {
                     }}
                     autoCapitalize="characters"
                     placeholder="مثال: SOFTCAR20"
-                    placeholderTextColor="#7f93ad"
+                    placeholderTextColor="#A3A3A3"
                     style={[styles.searchInput, styles.voucherInput]}
                   />
                   <Pressable
@@ -6659,9 +6733,9 @@ const styles = StyleSheet.create({
   voucherBroadcastBody: { padding: 18, gap: 8 },
   voucherBroadcastEyebrow: { color: '#fca5a5', fontSize: 11, fontWeight: '900', textAlign: 'right' },
   voucherBroadcastTitle: { color: '#ffffff', fontSize: 24, fontWeight: '900', textAlign: 'right' },
-  voucherBroadcastDescription: { color: '#cbd5e1', fontSize: 12, lineHeight: 20, textAlign: 'right' },
+  voucherBroadcastDescription: { color: '#D4D4D4', fontSize: 12, lineHeight: 20, textAlign: 'right' },
   voucherBroadcastCodeRow: { marginTop: 5, flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between', borderWidth: 1, borderColor: '#292929', backgroundColor: '#111111', borderRadius: 8, padding: 12 },
-  voucherBroadcastMeta: { color: '#8f8f97', fontSize: 10, fontWeight: '800', textAlign: 'right' },
+  voucherBroadcastMeta: { color: '#A3A3A3', fontSize: 10, fontWeight: '800', textAlign: 'right' },
   voucherBroadcastCode: { color: '#fca5a5', fontSize: 18, fontWeight: '900', marginTop: 3 },
   voucherBroadcastSeconds: { color: '#ffffff', fontSize: 17, fontWeight: '900', marginTop: 3, textAlign: 'left' },
   voucherBroadcastAction: { minHeight: 50, borderRadius: 8, backgroundColor: '#dc2626', alignItems: 'center', justifyContent: 'center', marginTop: 5, paddingHorizontal: 12 },
@@ -6697,7 +6771,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   crashMessage: {
-    color: '#d1d5db',
+    color: '#D4D4D4',
     fontSize: 14,
     lineHeight: 22,
     textAlign: 'center',
@@ -6719,7 +6793,7 @@ const styles = StyleSheet.create({
     minHeight: 48,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#4b5563',
+    borderColor: '#404040',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -6745,8 +6819,8 @@ const styles = StyleSheet.create({
   },
   bookingRecoveryCard: {
     borderWidth: 1,
-    borderColor: '#166534',
-    backgroundColor: '#071A10',
+    borderColor: '#7F1D1D',
+    backgroundColor: '#1D0B0B',
     borderRadius: 10,
     padding: 12,
     flexDirection: 'row-reverse',
@@ -6758,13 +6832,13 @@ const styles = StyleSheet.create({
     gap: 3,
   },
   bookingRecoveryTitle: {
-    color: '#BBF7D0',
+    color: '#FCA5A5',
     fontSize: 13,
     fontWeight: '900',
     textAlign: 'right',
   },
   bookingRecoveryText: {
-    color: '#D1FAE5',
+    color: '#FCA5A5',
     fontSize: 12,
     lineHeight: 19,
     textAlign: 'right',
@@ -6775,13 +6849,13 @@ const styles = StyleSheet.create({
     minWidth: 60,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#22C55E',
+    borderColor: '#D32F2F',
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 10,
   },
   bookingRecoveryDismissText: {
-    color: '#DCFCE7',
+    color: '#FCA5A5',
     fontSize: 12,
     fontWeight: '900',
   },
@@ -6801,7 +6875,7 @@ const styles = StyleSheet.create({
     textAlign: 'right',
   },
   refundStatusText: {
-    color: '#CBD5E1',
+    color: '#D4D4D4',
     fontSize: 12,
     lineHeight: 18,
     textAlign: 'right',
@@ -6826,15 +6900,15 @@ const styles = StyleSheet.create({
     minHeight: 36,
     borderRadius: 9,
     borderWidth: 1,
-    borderColor: '#F59E0B',
-    backgroundColor: '#211704',
+    borderColor: '#D32F2F',
+    backgroundColor: '#240B0B',
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 11,
     paddingVertical: 7,
   },
   reviewActionButtonText: {
-    color: '#FDE68A',
+    color: '#FCA5A5',
     fontSize: 11,
     fontWeight: '900',
   },
@@ -6854,11 +6928,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   reviewStarButtonActive: {
-    borderColor: '#F59E0B',
-    backgroundColor: '#F59E0B',
+    borderColor: '#D32F2F',
+    backgroundColor: '#D32F2F',
   },
   reviewStarText: {
-    color: '#CBD5E1',
+    color: '#D4D4D4',
     fontSize: 17,
     fontWeight: '900',
   },
@@ -6896,7 +6970,7 @@ const styles = StyleSheet.create({
     textAlign: 'right',
   },
   refundModalText: {
-    color: '#94A3B8',
+    color: '#A3A3A3',
     fontSize: 13,
     lineHeight: 20,
     textAlign: 'right',
@@ -6920,16 +6994,16 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#040914',
+    backgroundColor: '#050505',
     gap: 10,
   },
   bootingText: {
-    color: '#cbd5e1',
+    color: '#D4D4D4',
     fontSize: 14,
   },
   loginContainer: {
     flex: 1,
-    backgroundColor: '#040914',
+    backgroundColor: '#050505',
     padding: 16,
     justifyContent: 'center',
   },
@@ -6949,7 +7023,7 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   loginSubtitle: {
-    color: '#94a3b8',
+    color: '#A3A3A3',
     fontSize: 14,
     lineHeight: 20,
   },
@@ -6963,21 +7037,21 @@ const styles = StyleSheet.create({
     minHeight: 36,
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: '#1d4f63',
+    borderColor: '#7F1D1D',
     backgroundColor: '#050505',
     paddingHorizontal: 12,
     alignItems: 'center',
     justifyContent: 'center',
   },
   loginFeaturePillText: {
-    color: '#d5fbff',
+    color: '#FFFFFF',
     fontSize: 12,
     fontWeight: '700',
   },
   loginCard: {
     borderRadius: 18,
     borderWidth: 1,
-    borderColor: '#1f2e46',
+    borderColor: '#2A2A2A',
     backgroundColor: '#0A0A0A',
     padding: 14,
     gap: 10,
@@ -6993,7 +7067,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     borderWidth: 1,
     borderColor: '#2A2A2A',
-    backgroundColor: '#0e1a31',
+    backgroundColor: '#111111',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -7002,19 +7076,19 @@ const styles = StyleSheet.create({
     backgroundColor: '#D32F2F',
   },
   authModeButtonText: {
-    color: '#cbd5e1',
+    color: '#D4D4D4',
     fontWeight: '700',
     fontSize: 12,
   },
   authModeButtonTextActive: {
-    color: '#ecfeff',
+    color: '#FFFFFF',
   },
   loginInput: {
     minHeight: 48,
     borderRadius: 12,
     borderWidth: 1,
     borderColor: '#2A2A2A',
-    backgroundColor: '#0e1a31',
+    backgroundColor: '#111111',
     paddingHorizontal: 12,
     color: '#f8fafc',
     textAlign: 'right',
@@ -7088,7 +7162,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   otpSubtitle: {
-    color: '#cbd5e1',
+    color: '#D4D4D4',
     fontSize: 13,
     lineHeight: 21,
     textAlign: 'center',
@@ -7107,7 +7181,7 @@ const styles = StyleSheet.create({
     writingDirection: 'ltr',
   },
   otpHint: {
-    color: '#94a3b8',
+    color: '#A3A3A3',
     fontSize: 12,
     lineHeight: 18,
     textAlign: 'center',
@@ -7115,12 +7189,12 @@ const styles = StyleSheet.create({
   otpStatusBox: {
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#334155',
-    backgroundColor: '#111827',
+    borderColor: '#404040',
+    backgroundColor: '#111111',
     padding: 12,
   },
   otpStatusBoxSuccess: {
-    borderColor: '#16a34a',
+    borderColor: '#D32F2F',
     backgroundColor: 'rgba(22, 163, 74, 0.12)',
   },
   otpStatusBoxError: {
@@ -7128,13 +7202,13 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(239, 68, 68, 0.12)',
   },
   otpStatusText: {
-    color: '#dbeafe',
+    color: '#D4D4D4',
     fontSize: 12,
     lineHeight: 18,
     textAlign: 'center',
   },
   otpStatusTextSuccess: {
-    color: '#bbf7d0',
+    color: '#FCA5A5',
   },
   otpStatusTextError: {
     color: '#fecaca',
@@ -7154,7 +7228,7 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   otpTimerLabel: {
-    color: '#cbd5e1',
+    color: '#D4D4D4',
     fontSize: 12,
     fontWeight: '700',
   },
@@ -7197,7 +7271,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   otpEditButtonText: {
-    color: '#94a3b8',
+    color: '#A3A3A3',
     fontSize: 13,
     fontWeight: '800',
   },
@@ -7206,7 +7280,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     borderWidth: 1,
     borderColor: '#2A2A2A',
-    backgroundColor: '#0e1a31',
+    backgroundColor: '#111111',
     padding: 12,
     flexDirection: 'row',
     alignItems: 'center',
@@ -7214,14 +7288,14 @@ const styles = StyleSheet.create({
   },
   policyCheckRowActive: {
     borderColor: '#D32F2F',
-    backgroundColor: '#0b2f34',
+    backgroundColor: '#1D0B0B',
   },
   policyCheckBox: {
     width: 24,
     height: 24,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#64748b',
+    borderColor: '#737373',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -7236,14 +7310,14 @@ const styles = StyleSheet.create({
   },
   policyCheckText: {
     flex: 1,
-    color: '#cbd5e1',
+    color: '#D4D4D4',
     fontSize: 12,
     lineHeight: 18,
     textAlign: 'right',
   },
   container: {
     flex: 1,
-    backgroundColor: '#030813',
+    backgroundColor: '#050505',
   },
   scrollContent: {
     padding: 14,
@@ -7253,8 +7327,8 @@ const styles = StyleSheet.create({
   heroCard: {
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: '#164e63',
-    backgroundColor: '#0b1328',
+    borderColor: '#7F1D1D',
+    backgroundColor: '#111111',
     padding: 14,
     gap: 4,
   },
@@ -7283,7 +7357,7 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   heroMeta: {
-    color: '#94a3b8',
+    color: '#A3A3A3',
     fontSize: 12,
     marginTop: 2,
   },
@@ -7292,8 +7366,8 @@ const styles = StyleSheet.create({
     minHeight: 86,
     borderRadius: 18,
     borderWidth: 1,
-    borderColor: '#1f7a8c',
-    backgroundColor: '#091a2e',
+    borderColor: '#D32F2F',
+    backgroundColor: '#111111',
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 8,
@@ -7301,12 +7375,12 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   notificationBellIcon: {
-    color: '#d5fbff',
+    color: '#FFFFFF',
     fontSize: 12,
     fontWeight: '800',
   },
   notificationBellLabel: {
-    color: '#e2e8f0',
+    color: '#E5E5E5',
     fontSize: 12,
     fontWeight: '700',
   },
@@ -7329,8 +7403,8 @@ const styles = StyleSheet.create({
     minHeight: 64,
     borderRadius: 18,
     borderWidth: 1,
-    borderColor: '#1f7a8c',
-    backgroundColor: '#091a2e',
+    borderColor: '#D32F2F',
+    backgroundColor: '#111111',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -7342,8 +7416,8 @@ const styles = StyleSheet.create({
   currentTripCard: {
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#1b6a7a',
-    backgroundColor: '#0a1f2c',
+    borderColor: '#D32F2F',
+    backgroundColor: '#111111',
     paddingHorizontal: 12,
     paddingVertical: 10,
     gap: 4,
@@ -7355,12 +7429,12 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   currentTripTitle: {
-    color: '#e2e8f0',
+    color: '#E5E5E5',
     fontSize: 16,
     fontWeight: '800',
   },
   currentTripStatus: {
-    color: '#99f6e4',
+    color: '#FCA5A5',
     fontSize: 11,
     fontWeight: '800',
   },
@@ -7370,7 +7444,7 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   currentTripMeta: {
-    color: '#cbd5e1',
+    color: '#D4D4D4',
     fontSize: 13,
     textAlign: 'right',
   },
@@ -7378,13 +7452,13 @@ const styles = StyleSheet.create({
     marginTop: 4,
     paddingTop: 8,
     borderTopWidth: 1,
-    borderTopColor: '#164e63',
+    borderTopColor: '#7F1D1D',
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
   currentTripTicketLabel: {
-    color: '#94a3b8',
+    color: '#A3A3A3',
     fontSize: 12,
   },
   currentTripTicketCode: {
@@ -7402,14 +7476,14 @@ const styles = StyleSheet.create({
     minHeight: 46,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: '#1f7a8c',
-    backgroundColor: '#0d2531',
+    borderColor: '#D32F2F',
+    backgroundColor: '#111111',
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 12,
   },
   currentTripActionButtonText: {
-    color: '#ccfbf1',
+    color: '#FCA5A5',
     fontSize: 13,
     fontWeight: '800',
   },
@@ -7428,7 +7502,7 @@ const styles = StyleSheet.create({
     textAlign: 'right',
   },
   routeSearchHint: {
-    color: '#cbd5e1',
+    color: '#D4D4D4',
     fontSize: 12,
     lineHeight: 19,
     textAlign: 'right',
@@ -7486,7 +7560,7 @@ const styles = StyleSheet.create({
     minHeight: 48,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#3f3f46',
+    borderColor: '#404040',
     backgroundColor: '#ffffff',
     alignItems: 'center',
     justifyContent: 'center',
@@ -7523,7 +7597,7 @@ const styles = StyleSheet.create({
     textAlign: 'right',
   },
   walletProofText: {
-    color: '#cbd5e1',
+    color: '#D4D4D4',
     fontSize: 12,
     lineHeight: 18,
     textAlign: 'right',
@@ -7547,7 +7621,7 @@ const styles = StyleSheet.create({
   sectionCard: {
     borderRadius: 18,
     borderWidth: 1,
-    borderColor: '#1f2e46',
+    borderColor: '#2A2A2A',
     backgroundColor: '#0A0A0A',
     padding: 12,
     gap: 10,
@@ -7571,15 +7645,79 @@ const styles = StyleSheet.create({
   sectionBadge: {
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: '#1b6a7a',
+    borderColor: '#D32F2F',
     paddingHorizontal: 10,
     paddingVertical: 4,
     color: '#FCA5A5',
     fontSize: 11,
     fontWeight: '700',
   },
+  travelReadinessShell: {
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#2A2A2A',
+    backgroundColor: '#050505',
+    overflow: 'hidden',
+    gap: 0,
+  },
+  travelReadinessHeader: {
+    minHeight: 72,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+    backgroundColor: '#111111',
+  },
+  travelReadinessHeaderCopy: {
+    flex: 1,
+    gap: 3,
+  },
+  travelReadinessEyebrow: {
+    color: '#FCA5A5',
+    fontSize: 11,
+    fontWeight: '900',
+    textAlign: 'right',
+  },
+  travelReadinessTitle: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: '900',
+    textAlign: 'right',
+  },
+  travelReadinessHint: {
+    color: '#D4D4D4',
+    fontSize: 12,
+    lineHeight: 18,
+    textAlign: 'right',
+  },
+  travelReadinessToggle: {
+    minWidth: 76,
+    minHeight: 42,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#D32F2F',
+    backgroundColor: '#240B0B',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 10,
+    flexDirection: 'row-reverse',
+    gap: 7,
+  },
+  travelReadinessToggleText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '900',
+  },
+  travelReadinessToggleIcon: {
+    color: '#FCA5A5',
+    fontSize: 20,
+    lineHeight: 21,
+    fontWeight: '900',
+  },
   emptyStateText: {
-    color: '#94a3b8',
+    color: '#A3A3A3',
     fontSize: 13,
     lineHeight: 19,
   },
@@ -7596,7 +7734,7 @@ const styles = StyleSheet.create({
   },
   tripCardSelected: {
     borderColor: '#D32F2F',
-    backgroundColor: '#0c2234',
+    backgroundColor: '#1D0B0B',
   },
   tripCardHeader: {
     flexDirection: 'row',
@@ -7614,15 +7752,15 @@ const styles = StyleSheet.create({
   tripSeatsBadge: {
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: '#1f7a8c',
-    color: '#99f6e4',
+    borderColor: '#D32F2F',
+    color: '#FCA5A5',
     fontSize: 11,
     fontWeight: '700',
     paddingHorizontal: 8,
     paddingVertical: 3,
   },
   tripCardRoute: {
-    color: '#cbd5e1',
+    color: '#D4D4D4',
     fontSize: 13,
     textAlign: 'right',
   },
@@ -7646,7 +7784,7 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   tripCardMeta: {
-    color: '#94a3b8',
+    color: '#A3A3A3',
     fontSize: 12,
     textAlign: 'right',
   },
@@ -7663,18 +7801,18 @@ const styles = StyleSheet.create({
   tripDateChip: {
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: '#1f7a8c',
+    borderColor: '#D32F2F',
     backgroundColor: '#0A0A0A',
-    color: '#99f6e4',
+    color: '#FCA5A5',
     fontSize: 11,
     fontWeight: '800',
     paddingHorizontal: 9,
     paddingVertical: 4,
   },
   tripDateChipActive: {
-    borderColor: '#16a34a',
-    backgroundColor: '#052e16',
-    color: '#bbf7d0',
+    borderColor: '#D32F2F',
+    backgroundColor: '#240B0B',
+    color: '#FCA5A5',
   },
   tripCardActionRow: {
     marginTop: 6,
@@ -7686,7 +7824,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   tripCardActionHintText: {
-    color: '#8ba6c7',
+    color: '#A3A3A3',
     fontSize: 11,
     lineHeight: 16,
   },
@@ -7694,14 +7832,14 @@ const styles = StyleSheet.create({
     minHeight: 44,
     borderRadius: 11,
     borderWidth: 1,
-    borderColor: '#1f7a8c',
+    borderColor: '#D32F2F',
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#0A0A0A',
     paddingHorizontal: 16,
   },
   tripCardAction: {
-    color: '#ccfbf1',
+    color: '#FCA5A5',
     fontWeight: '700',
     fontSize: 13,
   },
@@ -7720,7 +7858,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#3b0b0b',
   },
   tripFavoriteButtonText: {
-    color: '#cbd5e1',
+    color: '#D4D4D4',
     fontSize: 12,
     fontWeight: '800',
   },
@@ -7731,7 +7869,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#23344f',
+    borderColor: '#2A2A2A',
     backgroundColor: '#050505',
   },
   focusDetailsCard: {
@@ -7745,7 +7883,7 @@ const styles = StyleSheet.create({
   recurringSummaryCard: {
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#1f7a8c',
+    borderColor: '#D32F2F',
     backgroundColor: '#0A0A0A',
     padding: 11,
     gap: 8,
@@ -7757,12 +7895,12 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   recurringSummaryTitle: {
-    color: '#ccfbf1',
+    color: '#FCA5A5',
     fontSize: 14,
     fontWeight: '900',
   },
   recurringSummaryHint: {
-    color: '#8ba6c7',
+    color: '#A3A3A3',
     fontSize: 12,
     lineHeight: 17,
   },
@@ -7773,7 +7911,7 @@ const styles = StyleSheet.create({
     textAlign: 'right',
   },
   focusTripRoute: {
-    color: '#9fb5cc',
+    color: '#A3A3A3',
     fontSize: 13,
     lineHeight: 19,
     textAlign: 'right',
@@ -7794,7 +7932,7 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   focusStatLabel: {
-    color: '#7f93ad',
+    color: '#A3A3A3',
     fontSize: 11,
     fontWeight: '700',
     letterSpacing: 0.8,
@@ -7802,14 +7940,14 @@ const styles = StyleSheet.create({
     textAlign: 'right',
   },
   focusStatValue: {
-    color: '#eff6ff',
+    color: '#FFFFFF',
     fontSize: 13,
     fontWeight: '700',
     lineHeight: 18,
     textAlign: 'right',
   },
   driverAssistMeta: {
-    color: '#9fb5cc',
+    color: '#A3A3A3',
     fontSize: 12,
     textAlign: 'right',
   },
@@ -7829,7 +7967,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
   },
   secondaryActionButtonText: {
-    color: '#e2e8f0',
+    color: '#E5E5E5',
     fontSize: 14,
     fontWeight: '700',
   },
@@ -7837,7 +7975,7 @@ const styles = StyleSheet.create({
     flex: 1,
     minHeight: 48,
     borderRadius: 14,
-    backgroundColor: '#e2e8f0',
+    backgroundColor: '#E5E5E5',
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 10,
@@ -7870,7 +8008,7 @@ const styles = StyleSheet.create({
     textAlign: 'right',
   },
   loyaltyHint: {
-    color: '#b6c8dc',
+    color: '#D4D4D4',
     fontSize: 12,
     lineHeight: 19,
     textAlign: 'right',
@@ -7900,8 +8038,8 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   loyaltyRewardEligible: {
-    borderColor: '#16A34A',
-    backgroundColor: '#071A0D',
+    borderColor: '#D32F2F',
+    backgroundColor: '#1D0B0B',
   },
   loyaltyActivityRow: {
     minHeight: 78,
@@ -7915,7 +8053,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   loyaltyActivityPoints: {
-    color: '#4ADE80',
+    color: '#FCA5A5',
     fontSize: 18,
     fontWeight: '900',
   },
@@ -7926,7 +8064,7 @@ const styles = StyleSheet.create({
     textAlign: 'right',
   },
   benefitText: {
-    color: '#a9bad1',
+    color: '#D4D4D4',
     fontSize: 12,
     lineHeight: 19,
     textAlign: 'right',
@@ -7949,7 +8087,7 @@ const styles = StyleSheet.create({
     textAlign: 'right',
   },
   complianceText: {
-    color: '#a9bad1',
+    color: '#D4D4D4',
     fontSize: 12,
     lineHeight: 19,
     textAlign: 'right',
@@ -7970,7 +8108,7 @@ const styles = StyleSheet.create({
     textAlign: 'right',
   },
   supportText: {
-    color: '#b6c8dc',
+    color: '#D4D4D4',
     fontSize: 13,
     lineHeight: 21,
     textAlign: 'right',
@@ -7990,7 +8128,7 @@ const styles = StyleSheet.create({
     textAlign: 'right',
   },
   supportPanelText: {
-    color: '#a9bad1',
+    color: '#D4D4D4',
     fontSize: 12,
     lineHeight: 19,
     textAlign: 'right',
@@ -8013,7 +8151,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#D32F2F',
   },
   supportPillText: {
-    color: '#cbd5e1',
+    color: '#D4D4D4',
     fontSize: 11,
     fontWeight: '800',
   },
@@ -8059,7 +8197,7 @@ const styles = StyleSheet.create({
     textAlign: 'right',
   },
   supportTicketMeta: {
-    color: '#94a3b8',
+    color: '#A3A3A3',
     fontSize: 11,
     lineHeight: 17,
     textAlign: 'right',
@@ -8081,7 +8219,7 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   supportTicketBody: {
-    color: '#dbeafe',
+    color: '#D4D4D4',
     fontSize: 12,
     lineHeight: 19,
     textAlign: 'right',
@@ -8143,7 +8281,7 @@ const styles = StyleSheet.create({
     textAlign: 'right',
   },
   confirmationSubtitle: {
-    color: '#cbd5e1',
+    color: '#D4D4D4',
     fontSize: 12,
     lineHeight: 19,
     textAlign: 'right',
@@ -8163,7 +8301,7 @@ const styles = StyleSheet.create({
     textAlign: 'right',
   },
   confirmationTripMeta: {
-    color: '#cbd5e1',
+    color: '#D4D4D4',
     fontSize: 12,
     lineHeight: 19,
     textAlign: 'right',
@@ -8182,7 +8320,7 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   confirmationDetailLabel: {
-    color: '#94a3b8',
+    color: '#A3A3A3',
     fontSize: 10,
     fontWeight: '800',
     textAlign: 'right',
@@ -8194,19 +8332,19 @@ const styles = StyleSheet.create({
     textAlign: 'right',
   },
   confirmationDetailHint: {
-    color: '#9ca3af',
+    color: '#A3A3A3',
     fontSize: 11,
     textAlign: 'right',
   },
   confirmationWarningBox: {
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: 'rgba(251, 191, 36, 0.42)',
-    backgroundColor: 'rgba(251, 191, 36, 0.12)',
+    borderColor: 'rgba(211, 47, 47, 0.42)',
+    backgroundColor: 'rgba(211, 47, 47, 0.12)',
     padding: 11,
   },
   confirmationWarningText: {
-    color: '#fde68a',
+    color: '#FCA5A5',
     fontSize: 12,
     lineHeight: 19,
     textAlign: 'right',
@@ -8220,8 +8358,8 @@ const styles = StyleSheet.create({
     minHeight: 50,
     borderRadius: 15,
     borderWidth: 1,
-    borderColor: '#3f3f46',
-    backgroundColor: '#18181b',
+    borderColor: '#404040',
+    backgroundColor: '#181818',
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 10,
@@ -8251,7 +8389,7 @@ const styles = StyleSheet.create({
     paddingVertical: 7,
   },
   confirmationLaterText: {
-    color: '#9ca3af',
+    color: '#A3A3A3',
     fontSize: 12,
     fontWeight: '800',
   },
@@ -8281,7 +8419,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   reservationMeta: {
-    color: '#cbd5e1',
+    color: '#D4D4D4',
     fontSize: 12,
     textAlign: 'right',
   },
@@ -8315,6 +8453,44 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     gap: 8,
   },
+  deleteAccountPanel: {
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#7F1D1D',
+    backgroundColor: '#1D0B0B',
+    padding: 12,
+    gap: 10,
+  },
+  deleteAccountCopy: {
+    gap: 4,
+  },
+  deleteAccountTitle: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '900',
+    textAlign: 'right',
+  },
+  deleteAccountText: {
+    color: '#FCA5A5',
+    fontSize: 12,
+    lineHeight: 19,
+    textAlign: 'right',
+  },
+  deleteAccountButton: {
+    minHeight: 46,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#D32F2F',
+    backgroundColor: '#D32F2F',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 12,
+  },
+  deleteAccountButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '900',
+  },
   signOutButton: {
     minHeight: 48,
     borderRadius: 12,
@@ -8333,7 +8509,7 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: 'row',
     justifyContent: 'flex-end',
-    backgroundColor: 'rgba(2, 6, 23, 0.6)',
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
   },
   drawerBackdrop: {
     position: 'absolute',
@@ -8348,7 +8524,7 @@ const styles = StyleSheet.create({
     height: '100%',
     backgroundColor: '#050505',
     borderLeftWidth: 1,
-    borderLeftColor: '#1f2e46',
+    borderLeftColor: '#2A2A2A',
     paddingHorizontal: 16,
     paddingTop: 24,
     paddingBottom: 18,
@@ -8375,7 +8551,7 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   drawerSubtitle: {
-    color: '#94a3b8',
+    color: '#A3A3A3',
     fontSize: 12,
     lineHeight: 18,
     textAlign: 'right',
@@ -8424,16 +8600,16 @@ const styles = StyleSheet.create({
     textAlign: 'right',
   },
   drawerMenuButtonTextActive: {
-    color: '#ecfeff',
+    color: '#FFFFFF',
   },
   drawerMenuHint: {
-    color: '#94a3b8',
+    color: '#A3A3A3',
     fontSize: 12,
     lineHeight: 17,
     textAlign: 'right',
   },
   drawerMenuHintActive: {
-    color: '#d1fae5',
+    color: '#FCA5A5',
   },
   drawerDangerButton: {
     borderColor: '#7f1d1d',
@@ -8456,7 +8632,7 @@ const styles = StyleSheet.create({
     gap: 8,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#1f2e46',
+    borderColor: '#2A2A2A',
     backgroundColor: 'rgba(10, 19, 38, 0.98)',
     padding: 8,
   },
@@ -8475,12 +8651,12 @@ const styles = StyleSheet.create({
     backgroundColor: '#D32F2F',
   },
   bottomTabText: {
-    color: '#cbd5e1',
+    color: '#D4D4D4',
     fontSize: 12,
     fontWeight: '700',
   },
   bottomTabTextActive: {
-    color: '#ecfeff',
+    color: '#FFFFFF',
   },
   mapWrap: {
     width: '100%',
@@ -8502,7 +8678,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.12)',
-    backgroundColor: 'rgba(2,6,23,0.82)',
+    backgroundColor: 'rgba(0, 0, 0,0.82)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -8521,14 +8697,14 @@ const styles = StyleSheet.create({
     borderRadius: 24,
   },
   mapFallbackText: {
-    color: '#94a3b8',
+    color: '#A3A3A3',
     textAlign: 'center',
     fontSize: 12,
     lineHeight: 18,
   },
   fullscreenMapRoot: {
     flex: 1,
-    backgroundColor: 'rgba(2,6,23,0.96)',
+    backgroundColor: 'rgba(0, 0, 0,0.96)',
     padding: 14,
     justifyContent: 'center',
   },
@@ -8539,19 +8715,19 @@ const styles = StyleSheet.create({
   },
   modalRoot: {
     flex: 1,
-    backgroundColor: '#030813',
+    backgroundColor: '#050505',
   },
   notificationModalRoot: {
     flex: 1,
     justifyContent: 'flex-end',
-    backgroundColor: 'rgba(2, 6, 23, 0.72)',
+    backgroundColor: 'rgba(0, 0, 0, 0.72)',
     padding: 12,
   },
   notificationPanel: {
     maxHeight: '86%',
     borderRadius: 22,
     borderWidth: 1,
-    borderColor: '#1f2e46',
+    borderColor: '#2A2A2A',
     backgroundColor: '#050505',
     padding: 14,
     gap: 12,
@@ -8589,7 +8765,7 @@ const styles = StyleSheet.create({
     textAlign: 'right',
   },
   notificationPanelMeta: {
-    color: '#8ba6c7',
+    color: '#A3A3A3',
     fontSize: 12,
     lineHeight: 18,
     marginTop: 4,
@@ -8615,12 +8791,12 @@ const styles = StyleSheet.create({
     backgroundColor: '#D32F2F',
   },
   notificationFilterText: {
-    color: '#cbd5e1',
+    color: '#D4D4D4',
     fontSize: 12,
     fontWeight: '800',
   },
   notificationFilterTextActive: {
-    color: '#ecfeff',
+    color: '#FFFFFF',
   },
   notificationSearchInput: {
     minHeight: 46,
@@ -8637,12 +8813,12 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     borderWidth: 1,
     borderColor: '#D32F2F',
-    backgroundColor: '#061e2a',
+    backgroundColor: '#111111',
     padding: 14,
     gap: 8,
   },
   notificationFocusEyebrow: {
-    color: '#5eead4',
+    color: '#FCA5A5',
     fontSize: 11,
     fontWeight: '900',
     letterSpacing: 1.2,
@@ -8655,13 +8831,13 @@ const styles = StyleSheet.create({
     textAlign: 'right',
   },
   notificationFocusBody: {
-    color: '#dbe7f5',
+    color: '#D4D4D4',
     fontSize: 14,
     lineHeight: 22,
     textAlign: 'right',
   },
   notificationFocusTime: {
-    color: '#8ba6c7',
+    color: '#A3A3A3',
     fontSize: 12,
     textAlign: 'right',
   },
@@ -8682,7 +8858,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
   },
   notificationUtilityButtonText: {
-    color: '#e2e8f0',
+    color: '#E5E5E5',
     fontSize: 12,
     fontWeight: '800',
   },
@@ -8702,7 +8878,7 @@ const styles = StyleSheet.create({
   },
   notificationBulkMeta: {
     flex: 1,
-    color: '#8ba6c7',
+    color: '#A3A3A3',
     fontSize: 12,
     textAlign: 'right',
   },
@@ -8737,7 +8913,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#0A0A0A',
   },
   notificationCardFocused: {
-    borderColor: '#5eead4',
+    borderColor: '#FCA5A5',
     backgroundColor: '#111111',
   },
   notificationCardHeader: {
@@ -8754,18 +8930,18 @@ const styles = StyleSheet.create({
     textAlign: 'right',
   },
   notificationCardTime: {
-    color: '#8ba6c7',
+    color: '#A3A3A3',
     fontSize: 11,
     textAlign: 'right',
   },
   notificationCardBody: {
-    color: '#dbe7f5',
+    color: '#D4D4D4',
     fontSize: 13,
     lineHeight: 19,
     textAlign: 'right',
   },
   notificationCardType: {
-    color: '#99f6e4',
+    color: '#FCA5A5',
     fontSize: 11,
     fontWeight: '700',
     letterSpacing: 0.8,
@@ -8778,7 +8954,7 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   notificationCardAction: {
-    color: '#e2e8f0',
+    color: '#E5E5E5',
     fontSize: 12,
     fontWeight: '800',
   },
@@ -8798,7 +8974,7 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   notificationEndText: {
-    color: '#64748b',
+    color: '#737373',
     fontSize: 12,
     textAlign: 'center',
     paddingVertical: 8,
@@ -8823,7 +8999,7 @@ const styles = StyleSheet.create({
     color: '#f8fafc',
     fontSize: 14,
     fontWeight: '700',
-    backgroundColor: 'rgba(2, 6, 23, 0.72)',
+    backgroundColor: 'rgba(0, 0, 0, 0.72)',
     borderRadius: 12,
     borderWidth: 1,
     borderColor: '#404040',
@@ -8835,14 +9011,14 @@ const styles = StyleSheet.create({
     minHeight: 40,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: '#164e63',
+    borderColor: '#7F1D1D',
     backgroundColor: 'rgba(8, 26, 39, 0.86)',
     paddingHorizontal: 12,
     alignItems: 'center',
     justifyContent: 'center',
   },
   modalGhostButtonText: {
-    color: '#d5fbff',
+    color: '#FFFFFF',
     fontWeight: '700',
     fontSize: 12,
   },
@@ -8851,13 +9027,13 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     borderWidth: 1,
     borderColor: '#404040',
-    backgroundColor: 'rgba(2, 6, 23, 0.85)',
+    backgroundColor: 'rgba(0, 0, 0, 0.85)',
     paddingHorizontal: 12,
     alignItems: 'center',
     justifyContent: 'center',
   },
   modalCloseButtonText: {
-    color: '#e2e8f0',
+    color: '#E5E5E5',
     fontWeight: '700',
     fontSize: 12,
   },
@@ -8871,7 +9047,7 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     borderWidth: 1,
-    borderColor: '#1f2e46',
+    borderColor: '#2A2A2A',
   },
   sheetHandleZone: {
     alignItems: 'center',
@@ -8879,7 +9055,7 @@ const styles = StyleSheet.create({
     paddingTop: 10,
     paddingBottom: 8,
     borderBottomWidth: 1,
-    borderBottomColor: '#1f2e46',
+    borderBottomColor: '#2A2A2A',
   },
   sheetHandlePressable: {
     width: '100%',
@@ -8895,7 +9071,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   sheetTitle: {
-    color: '#e2e8f0',
+    color: '#E5E5E5',
     fontSize: 13,
     fontWeight: '700',
   },
@@ -8924,7 +9100,7 @@ const styles = StyleSheet.create({
   },
   tripSummaryCardFocused: {
     borderColor: '#D32F2F',
-    backgroundColor: '#0d2336',
+    backgroundColor: '#111111',
   },
   tripSummaryTitle: {
     color: '#f8fafc',
@@ -8933,7 +9109,7 @@ const styles = StyleSheet.create({
     textAlign: 'right',
   },
   tripSummaryMeta: {
-    color: '#cbd5e1',
+    color: '#D4D4D4',
     fontSize: 12,
     textAlign: 'right',
   },
@@ -8944,13 +9120,13 @@ const styles = StyleSheet.create({
     borderTopColor: '#2A2A2A',
   },
   tripSummaryActionText: {
-    color: '#99f6e4',
+    color: '#FCA5A5',
     fontSize: 11,
     lineHeight: 16,
   },
   inputLabel: {
     marginTop: 8,
-    color: '#e2e8f0',
+    color: '#E5E5E5',
     fontSize: 14,
     fontWeight: '800',
     textAlign: 'right',
@@ -8972,20 +9148,20 @@ const styles = StyleSheet.create({
   },
   pointOptionCardActive: {
     borderColor: '#D32F2F',
-    backgroundColor: '#0f2f2f',
+    backgroundColor: '#1D0B0B',
   },
   pointOptionOrderWrap: {
     width: 28,
     height: 28,
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: '#475569',
+    borderColor: '#737373',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#0b1222',
+    backgroundColor: '#111111',
   },
   pointOptionOrderText: {
-    color: '#cbd5e1',
+    color: '#D4D4D4',
     fontSize: 12,
     fontWeight: '700',
   },
@@ -8994,21 +9170,21 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   pointOptionTitle: {
-    color: '#e2e8f0',
+    color: '#E5E5E5',
     fontSize: 13,
     fontWeight: '700',
     textAlign: 'right',
   },
   pointOptionTitleActive: {
-    color: '#ecfeff',
+    color: '#FFFFFF',
   },
   pointOptionMeta: {
-    color: '#94a3b8',
+    color: '#A3A3A3',
     fontSize: 11,
     textAlign: 'right',
   },
   pointOptionMetaActive: {
-    color: '#99f6e4',
+    color: '#FCA5A5',
   },
   pillsWrap: {
     flexDirection: 'row',
@@ -9029,37 +9205,37 @@ const styles = StyleSheet.create({
     backgroundColor: '#D32F2F',
   },
   choicePillText: {
-    color: '#e2e8f0',
+    color: '#E5E5E5',
     fontSize: 12,
     fontWeight: '600',
   },
   choicePillTextActive: {
-    color: '#ecfeff',
+    color: '#FFFFFF',
     fontWeight: '700',
   },
   confirmationCard: {
     marginTop: 8,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: '#1f7a8c',
+    borderColor: '#D32F2F',
     backgroundColor: '#0A0A0A',
     padding: 10,
     gap: 4,
   },
   confirmationTitle: {
-    color: '#e0f2fe',
+    color: '#FFFFFF',
     fontSize: 14,
     fontWeight: '800',
   },
   confirmationText: {
-    color: '#cfe8ff',
+    color: '#F8F8F8',
     fontSize: 12,
   },
   pricingPreviewCard: {
     marginTop: 8,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: '#24445a',
+    borderColor: '#2A2A2A',
     backgroundColor: '#050505',
     padding: 12,
     gap: 10,
@@ -9073,7 +9249,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   tierRecommendationTitle: {
-    color: '#bbf7d0',
+    color: '#FCA5A5',
     fontSize: 13,
     fontWeight: '900',
     textAlign: 'right',
@@ -9111,26 +9287,26 @@ const styles = StyleSheet.create({
     minHeight: 74,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#1f394d',
+    borderColor: '#2A2A2A',
     backgroundColor: '#0A0A0A',
     padding: 10,
     gap: 6,
   },
   pricingPreviewLabel: {
-    color: '#8ba6c7',
+    color: '#A3A3A3',
     fontSize: 11,
     fontWeight: '700',
     textAlign: 'right',
   },
   pricingPreviewValue: {
-    color: '#ecfeff',
+    color: '#FFFFFF',
     fontSize: 13,
     fontWeight: '800',
     lineHeight: 18,
     textAlign: 'right',
   },
   pricingPreviewHint: {
-    color: '#9fb5cc',
+    color: '#A3A3A3',
     fontSize: 12,
     lineHeight: 18,
     textAlign: 'right',
