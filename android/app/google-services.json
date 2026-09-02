@@ -1,0 +1,67 @@
+{
+  "project_info": {
+    "project_number": "370644357256",
+    "project_id": "softcar-shuttle",
+    "storage_bucket": "softcar-shuttle.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:370644357256:android:8ba6f31667c11210adcf3d",
+        "android_client_info": {
+          "package_name": "com.softcar.admin"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBAtycCLi7I9rQrdY9_yKp990bdkGyZPU4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:370644357256:android:a91bbedb4d941625adcf3d",
+        "android_client_info": {
+          "package_name": "com.softcar.driversss"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBAtycCLi7I9rQrdY9_yKp990bdkGyZPU4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:370644357256:android:edba68e38f7520e2adcf3d",
+        "android_client_info": {
+          "package_name": "com.softcar.passengersss"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBAtycCLi7I9rQrdY9_yKp990bdkGyZPU4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
