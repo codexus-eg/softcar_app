@@ -27,10 +27,12 @@ workflows:
           cd ios
           pod install
 
+      - name: Set up code signing settings on Xcode project
+        script: xcode-project use-profiles
+
       - name: Build Flutter iOS (IPA)
         script: |
-          # أداة فلتر مدمجة تقوم بالبناء والتوقيع وتجهيز ملف الـ IPA مباشرة
-          flutter build ipa --release
+          flutter build ipa --release --export-options-plist=/Users/builder/export_options.plist
 
     artifacts:
       - build/ios/ipa/*.ipa
