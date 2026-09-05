@@ -15,7 +15,8 @@ import 'services/storage_service.dart';
 
 Future<void> _onFcmMessage(RemoteMessage message) async {
   final data = message.data;
-  final title = message.notification?.title ?? data['title']?.toString() ?? 'SoftCar';
+  final title =
+      message.notification?.title ?? data['title']?.toString() ?? 'SoftCar';
   final body = message.notification?.body ?? data['body']?.toString() ?? '';
   final type = data['type']?.toString() ?? '';
   final id = data['id']?.toString() ?? data['notificationId']?.toString() ?? '';
@@ -41,9 +42,8 @@ void _onFcmOpened(RemoteMessage message) {
   AppNav.go(PushService.routeForType(type));
 }
 
-void main() async {
+void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp();
   SoftCallBootstrap.init();
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
@@ -53,46 +53,86 @@ void main() async {
     ),
   );
 
-  // Draw the first Flutter frame before invoking platform plugins. On some
-  // cold Android starts the engine can run Dart a fraction before plugin
-  // registration finishes; awaiting SharedPreferences here used to leave
-  // the native logo on screen forever with MissingPluginException.
+  // Nothing above runApp may depend on an optional platform service. In
+  // particular, Firebase cannot initialize on iOS until a valid
+  // GoogleService-Info.plist has been added to the Runner target. Awaiting it
+  // here used to stop Flutter before its first frame and leave the native
+  // launch screen visible forever.
   final storage = StorageService();
-  await PushService.restorePushToken();
-  try {
-    final fcmToken = await FirebaseMessaging.instance.getToken();
-    if (fcmToken != null && fcmToken.isNotEmpty) {
-      await PushService.setPushToken(fcmToken);
-    }
-    FirebaseMessaging.instance.onTokenRefresh.listen((refreshed) async {
-      await PushService.setPushToken(refreshed);
-    });
-  } catch (_) {}
-  FirebaseMessaging.onMessage.listen(_onFcmMessage);
-  FirebaseMessaging.onBackgroundMessage(_onFcmBackgroundMessage);
-  FirebaseMessaging.onMessageOpenedApp.listen(_onFcmOpened);
-  runApp(SoftCarApp(
-    storage: storage,
-    initialDark: false,
-    initialLocale: const Locale('en'),
-  ));
+  runApp(
+    SoftCarApp(
+      storage: storage,
+      initialDark: false,
+      initialLocale: const Locale('en'),
+    ),
+  );
 
-  try {
-    Workmanager().initialize(callbackDispatcher, isInDebugMode: false);
-  } catch (_) {}
-
+  // Optional native integrations start only after Flutter has rendered. A
+  // missing/misconfigured Firebase file or plugin can disable that feature,
+  // but can no longer prevent passengers from opening the app.
   WidgetsBinding.instance.addPostFrameCallback((_) {
-    // Foreground boot: also raises runtime prompts and resolves a cold-start
-    // notification tap into a pending deep-link route.
-    unawaited(PushService.instance.init(requestRuntimePermissions: true));
+    unawaited(_startOptionalServices());
+  });
+}
+
+/// Starts best-effort platform integrations without delaying the first frame.
+///
+/// Every awaited plugin call has a timeout and its own failure boundary. This
+/// is important for App Store builds because Firebase is optional until the
+/// developer supplies the bundle-specific GoogleService-Info.plist.
+Future<void> _startOptionalServices() async {
+  try {
+    await PushService.restorePushToken().timeout(const Duration(seconds: 3));
+  } catch (_) {}
+
+  var firebaseReady = false;
+  try {
+    await Firebase.initializeApp().timeout(const Duration(seconds: 10));
+    firebaseReady = true;
+  } catch (_) {
+    // The REST API, SSE and local polling continue to work without Firebase.
+  }
+
+  if (firebaseReady) {
     try {
-      FirebaseMessaging.instance.getInitialMessage().then((m) {
-        if (m != null) _onFcmOpened(m);
+      final fcmToken = await FirebaseMessaging.instance.getToken().timeout(
+        const Duration(seconds: 8),
+      );
+      if (fcmToken != null && fcmToken.isNotEmpty) {
+        await PushService.setPushToken(fcmToken);
+      }
+      FirebaseMessaging.instance.onTokenRefresh.listen((refreshed) {
+        unawaited(PushService.setPushToken(refreshed));
       });
     } catch (_) {}
-    PushService.instance.registerBackgroundPoll();
-    Timer.periodic(const Duration(seconds: 30), (_) {
-      PushService.pollOnce();
-    });
+
+    FirebaseMessaging.onMessage.listen(_onFcmMessage);
+    FirebaseMessaging.onBackgroundMessage(_onFcmBackgroundMessage);
+    FirebaseMessaging.onMessageOpenedApp.listen(_onFcmOpened);
+    try {
+      final initialMessage = await FirebaseMessaging.instance
+          .getInitialMessage()
+          .timeout(const Duration(seconds: 5));
+      if (initialMessage != null) _onFcmOpened(initialMessage);
+    } catch (_) {}
+  }
+
+  // Foreground boot: raises runtime prompts and prepares cold-start local
+  // notification routing. This remains useful when Firebase is unavailable.
+  try {
+    await PushService.instance
+        .init(requestRuntimePermissions: true)
+        .timeout(const Duration(seconds: 10));
+  } catch (_) {}
+
+  try {
+    await Workmanager()
+        .initialize(callbackDispatcher, isInDebugMode: false)
+        .timeout(const Duration(seconds: 10));
+    await PushService.instance.registerBackgroundPoll();
+  } catch (_) {}
+
+  Timer.periodic(const Duration(seconds: 30), (_) {
+    unawaited(PushService.pollOnce());
   });
 }
