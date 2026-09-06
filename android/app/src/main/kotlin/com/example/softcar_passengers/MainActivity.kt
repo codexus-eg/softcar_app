@@ -1,4 +1,4 @@
-package com.softcar.passengersss
+package com.example.softcar_passengers
 
 import io.flutter.embedding.android.FlutterActivity
 
