@@ -108,3 +108,84 @@ class DateBadge extends StatelessWidget {
     );
   }
 }
+
+/// A compact stacked time tile (e.g. "5:30" over "PM") used inside trip
+/// cards. Splitting the meridiem onto its own smaller line keeps the tile
+/// perfectly centered and avoids the cramped, unbalanced look of a single
+/// "h:mm a" string squeezed into a fixed-size box.
+class TimeBadge extends StatelessWidget {
+  final DateTime date;
+  final double width;
+  final double height;
+  final Color background;
+
+  const TimeBadge({
+    super.key,
+    required this.date,
+    this.width = 52,
+    this.height = 52,
+    required this.background,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final wall = egWall(date)!;
+    final hour12 = switch (wall.hour % 12) {
+      0 => 12,
+      final h => h,
+    };
+    final minute = wall.minute.toString().padLeft(2, '0');
+    final period = wall.hour < 12 ? 'AM' : 'PM';
+    final onColor = background.computeLuminance() > 0.5
+        ? Colors.black87
+        : Colors.white;
+
+    return Container(
+      width: width,
+      height: height,
+      decoration: BoxDecoration(
+        color: background,
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: [
+          BoxShadow(
+            color: background.withValues(alpha: 0.3),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      alignment: Alignment.center,
+      padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 4),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(
+            '$hour12:$minute',
+            maxLines: 1,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: onColor,
+              fontWeight: FontWeight.w900,
+              fontSize: 14,
+              height: 1.0,
+            ),
+          ),
+          const SizedBox(height: 3),
+          Text(
+            period,
+            maxLines: 1,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: onColor.withValues(alpha: 0.9),
+              fontWeight: FontWeight.w700,
+              fontSize: 9,
+              letterSpacing: 0.4,
+              height: 1.0,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}

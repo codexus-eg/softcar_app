@@ -121,14 +121,19 @@ class UserProfile {
             : const [],
       );
 
-  bool get hasGender => gender != null;
+bool get hasGender => gender != null;
 
-UserProfile copyWith({
+  /// Sentinel so callers can explicitly clear the avatar with
+  /// `copyWith(image: null)` — without it, null would be read as
+  /// "keep the current image".
+  static const Object _imageUnset = Object();
+
+  UserProfile copyWith({
     UserGender? gender,
     String? name,
     String? phone,
     String? email,
-    String? image,
+    Object? image = _imageUnset,
     String? preferredLanguage,
     String? preferredTheme,
     bool? pushNotifications,
@@ -145,7 +150,9 @@ UserProfile copyWith({
         email: email ?? this.email,
         phone: phone ?? this.phone,
         gender: gender ?? this.gender,
-        image: image ?? this.image,
+        image: identical(image, _imageUnset)
+            ? this.image
+            : image as String?,
         preferredLanguage: preferredLanguage ?? this.preferredLanguage,
         preferredTheme: preferredTheme ?? this.preferredTheme,
         pushNotifications: pushNotifications ?? this.pushNotifications,

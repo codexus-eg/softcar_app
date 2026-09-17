@@ -9,6 +9,7 @@ import '../../services/auth_service.dart';
 import '../../services/reservation_service.dart';
 import '../../services/wallet_service.dart';
 import '../../widgets/common_widgets.dart';
+import '../profile/referral_screen.dart';
 
 /// Settings tab: the passenger's home base for their account. Tapping the
 /// profile card opens the full editable profile (personal info, saved Home /
@@ -71,12 +72,14 @@ class SettingsTab extends StatelessWidget {
             _MenuTile(
               icon: Icons.location_on_outlined,
               label: L10n.t(context, 'savedPlacesTitle'),
-              onTap: () => Navigator.of(context).pushNamed('/profile'),
+              onTap: () => Navigator.of(context).pushNamed('/saved-places'),
             ),
             _MenuTile(
               icon: Icons.card_giftcard_rounded,
               label: L10n.t(context, 'referralCode'),
-              onTap: () => Navigator.of(context).pushNamed('/profile'),
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const ReferralScreen()),
+              ),
             ),
             _MenuTile(
               icon: Icons.confirmation_number_outlined,

@@ -482,7 +482,7 @@ class _ConfirmationCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final startLabel = egFormat(
       DateTime.tryParse(_trip['startTime']?.toString() ?? ''),
-      'EEE, MMM d · HH:mm',
+      'EEE, MMM d · h:mm a',
     );
     final labels = <String>[
       if (cash) L10n.t(context, 'collectingCash'),

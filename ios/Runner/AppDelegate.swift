@@ -2,6 +2,7 @@ import Flutter
 import UIKit
 
 import FirebaseCore
+import GoogleMaps
 import FirebaseMessaging
 import UserNotifications
 
@@ -24,6 +25,11 @@ import UserNotifications
         )
       }
       application.registerForRemoteNotifications()
+    }
+    if let mapsApiKey = Bundle.main.object(forInfoDictionaryKey:
+                                           "com.google.android.geo.API_KEY") as? String,
+       !mapsApiKey.isEmpty {
+      GMSServices.provideAPIKey(mapsApiKey)
     }
     GeneratedPluginRegistrant.register(with: self)
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)

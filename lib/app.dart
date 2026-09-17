@@ -15,6 +15,9 @@ import 'screens/legal/legal_screen.dart';
 import 'screens/notifications/notifications_screen.dart';
 import 'screens/onboarding/onboarding_screen.dart';
 import 'screens/profile/profile_screen.dart';
+import 'screens/profile/saved_places_screen.dart';
+import 'screens/suggest_trip/suggest_trip_screen.dart';
+import 'screens/suggest_trip/my_requests_screen.dart';
 import 'screens/profile/settings_screen.dart';
 import 'screens/search/search_screen.dart';
 import 'screens/search/trip_details_screen.dart';
@@ -149,6 +152,9 @@ Map<String, WidgetBuilder> _buildRoutes() {
     '/wallet': (_) => const WalletScreen(),
     '/vouchers': (_) => const VouchersScreen(),
     '/profile': (_) => const ProfileScreen(),
+    '/saved-places': (_) => const SavedPlacesScreen(),
+    '/suggest-trip': (_) => const SuggestTripScreen(),
+    '/my-requests': (_) => const MyRequestsScreen(),
     '/notifications': (_) => const NotificationsScreen(),
     '/settings': (_) => const SettingsScreen(),
     '/help': (_) => const HelpScreen(),

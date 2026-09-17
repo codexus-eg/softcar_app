@@ -488,7 +488,7 @@ class _TierLegRow extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '$label · ${egFormat(leg.startTime, 'EEE, HH:mm')}',
+                  '$label · ${egFormat(leg.startTime, 'EEE, h:mm a')}',
                   style: const TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w800,

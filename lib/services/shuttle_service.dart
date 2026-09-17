@@ -7,29 +7,25 @@ import 'passenger_api.dart';
 /// reservation comes from the production backend — there is no offline
 /// seed or demo data.
 class ShuttleService extends ChangeNotifier {
-  /// Sentinel fleet-filter value: the merged "Standard · 14/28" fleet (the
-  /// 14-seat SoftCar-Fit + 28-seat SoftCar-Go together). `comfort` is reused
-  /// as a compact sentinel because the passenger app only ever filters
-  /// "Luxury · 3" vs the standard 14+28 fleet.
-  static const ShuttleClass standardFleet = ShuttleClass.comfort;
-
   List<ShuttleTrip> _trips = const [];
   List<ReservationTier> _tiers = const [];
+  List<FleetService> _fleetServices = const [];
   bool _loading = false;
   Object? _error;
-  ShuttleClass? _fleetFilter;
+  FleetService? _fleetFilter;
 
   List<ShuttleTrip> get trips => _trips;
   List<ReservationTier> get tiers => _tiers;
+  List<FleetService> get fleetServices => _fleetServices;
   bool get loading => _loading;
   Object? get error => _error;
   bool get hasTrips => _trips.isNotEmpty;
 
   /// Whether a fleet filter was set anywhere (home pill → search). null = All.
-  ShuttleClass? get fleetFilter => _fleetFilter;
+  FleetService? get fleetFilter => _fleetFilter;
 
-  void setFleetFilter(ShuttleClass? filter) {
-    if (_fleetFilter == filter) return;
+  void setFleetFilter(FleetService? filter) {
+    if (_fleetFilter?.code == filter?.code) return;
     _fleetFilter = filter;
     notifyListeners();
   }
@@ -49,6 +45,29 @@ class ShuttleService extends ChangeNotifier {
       _tiers = rows.whereType<Map>().map((e) {
         return ReservationTier.fromJson(Map<String, dynamic>.from(e));
       }).toList();
+      notifyListeners();
+    } catch (_) {}
+  }
+
+  /// Loads the admin's live fleet service classes into [_fleetServices].
+  /// Re-run on every trips refresh so a newly created service shows
+  /// immediately in the home fleet bar and on search. Failures are swallowed.
+  Future<void> loadFleetServices() async {
+    if (!passengerApi.isLoggedIn) return;
+    try {
+      final rows = await passengerApi.getFleetServices();
+      final services = rows
+          .whereType<Map>()
+          .map((e) => FleetService.fromJson(e))
+          .where((s) => s.isActive)
+          .toList()
+        ..sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
+      _fleetServices = services;
+      final current = _fleetFilter;
+      if (current != null &&
+          !services.any((s) => s.code == current.code)) {
+        _fleetFilter = null;
+      }
       notifyListeners();
     } catch (_) {}
   }
@@ -108,6 +127,7 @@ class ShuttleService extends ChangeNotifier {
         return ShuttleTrip.fromJson(Map<String, dynamic>.from(e));
       }).toList()
         ..sort((a, b) => a.startTime.compareTo(b.startTime));
+      await loadFleetServices();
       return true;
     } catch (e) {
       _error = e;

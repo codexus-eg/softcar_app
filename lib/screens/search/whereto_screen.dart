@@ -8,10 +8,12 @@ import '../../core/l10n/l10n.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/utils/egypt_time.dart';
 import '../../core/utils/formatters.dart';
+import '../../core/utils/haptics.dart';
 import '../../models/shuttle.dart';
 import '../../services/auth_service.dart';
 import '../../services/passenger_api.dart';
 import '../../services/passenger_location_service.dart';
+import '../../services/shuttle_service.dart';
 
 /// "Where to?" smart search: the user types a destination (or pins one) and
 /// the backend ranks every upcoming trip by total walking distance to the
@@ -208,6 +210,103 @@ class _WhereToScreenState extends State<WhereToScreen> {
     }
   }
 
+  // ---- fleet-service filter ----------------------------------------------
+
+  bool _filterInitialized = false;
+  FleetService? _filter;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_filterInitialized) {
+      _filterInitialized = true;
+      final args = ModalRoute.of(context)?.settings.arguments;
+      _filter =
+          args is FleetService
+              ? args
+              : context.read<ShuttleService>().fleetFilter;
+    }
+  }
+
+  /// Same matching rule as the Search tab: the trip matches its raw service
+  /// code, its legacy vehicle class, or its seat capacity — so even a brand
+  /// new admin-created service filters correctly.
+  bool _matchesFilter(_WhereToResult result, FleetService? filter) {
+    if (filter == null) return true;
+    final code = (result.trip['serviceClassCode'] ??
+            result.trip['serviceCode'])
+        ?.toString()
+        .toUpperCase() ??
+        '';
+    if (filter.code.isNotEmpty && code == filter.code.toUpperCase()) {
+      return true;
+    }
+    final known = filter.knownClass;
+    if (known != null) {
+      final cls = ShuttleClass.fromApi(
+        (result.trip['serviceClassCode'] ?? result.trip['vehicle'])
+            ?.toString(),
+      );
+      if (cls != null && cls == known) return true;
+    }
+    final seats = (result.trip['totalSeats'] as num?)?.toInt() ?? 0;
+    if (seats <= 0 || filter.seatCapacity <= 0) return false;
+    return seats == filter.seatCapacity;
+  }
+
+  void _setFilter(FleetService? filter) {
+    Haptics.selection();
+    setState(() => _filter = filter);
+  }
+
+  List<FleetService> _fleetServices() {
+    final shuttle = context.read<ShuttleService>();
+    if (shuttle.fleetServices.isNotEmpty) return shuttle.fleetServices;
+    return ShuttleClass.values
+        .map(
+          (cls) => FleetService(
+            id: cls.name,
+            code: cls.apiCode,
+            name: cls.name,
+            description: '',
+            seatCapacity: cls.seats,
+            passengerTripPrice: -1,
+            isActive: true,
+            sortOrder: cls.index,
+          ),
+        )
+        .toList();
+  }
+
+  Widget _fleetFilterBar() {
+    final services = _fleetServices();
+    return SizedBox(
+      height: 40,
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        children: [
+          _FleetFilterChip(
+            label: L10n.t(context, 'allTrips'),
+            color: AppColors.accent,
+            selected: _filter == null,
+            onTap: () => _setFilter(null),
+          ),
+          const SizedBox(width: 8),
+          for (final s in services) ...[
+            _FleetFilterChip(
+              label: s.displayName,
+              color: s.color,
+              selected: _filter?.code == s.code,
+              onTap: () => _setFilter(_filter?.code == s.code ? null : s),
+            ),
+            const SizedBox(width: 8),
+          ],
+        ],
+      ),
+    );
+  }
+
   void _promptSignIn() {
     final auth = context.read<AuthService>();
     if (auth.isLoggedIn) return;
@@ -256,6 +355,10 @@ class _WhereToScreenState extends State<WhereToScreen> {
       appBar: AppBar(title: Text(L10n.t(context, 'whereTo'))),
       body: Column(
         children: [
+          if (_fleetServices().isNotEmpty) ...[
+            const SizedBox(height: 6),
+            _fleetFilterBar(),
+          ],
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
             child: Column(
@@ -461,6 +564,14 @@ class _WhereToScreenState extends State<WhereToScreen> {
     }
     if (count != null && count > 0) header.write(' · $count');
 
+    final filteredCount = _meta['totalScored'] ?? _results.length;
+    final visible = _filter == null
+        ? _results
+        : _results.where((r) => _matchesFilter(r, _filter)).toList();
+    final noFilterMatch = _filter != null &&
+        _results.isNotEmpty &&
+        visible.isEmpty;
+
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
       children: [
@@ -482,20 +593,91 @@ class _WhereToScreenState extends State<WhereToScreen> {
               ),
               const Spacer(),
               Text(
-                '${_results.length}/${_meta['totalScored'] ?? _results.length}',
+                '${visible.length}/$filteredCount',
                 style: TextStyle(fontSize: 12, color: subColor),
               ),
             ],
           ),
         ),
-        for (var i = 0; i < _results.length; i++)
+        if (noFilterMatch)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.directions_bus_filled_outlined,
+                  size: 38,
+                  color: AppColors.textTertiary,
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  L10n.t(context, 'whereToNoResults'),
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: subColor, fontSize: 14),
+                ),
+                const SizedBox(height: 6),
+                TextButton.icon(
+                  onPressed: () => _setFilter(null),
+                  icon: const Icon(Icons.filter_alt_off_rounded, size: 16),
+                  label: Text(
+                    L10n.t(context, 'allTrips'),
+                    style: const TextStyle(fontWeight: FontWeight.w800),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        for (var i = 0; i < visible.length; i++)
           _ResultCard(
             index: i,
-            result: _results[i],
+            result: visible[i],
             dark: dark,
-            onTap: () => _openTrip(_results[i]),
+            onTap: () => _openTrip(visible[i]),
           ),
       ],
+    );
+  }
+}
+
+class _FleetFilterChip extends StatelessWidget {
+  const _FleetFilterChip({
+    required this.label,
+    required this.color,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final Color color;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 160),
+        curve: Curves.easeOutCubic,
+        alignment: Alignment.center,
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        decoration: BoxDecoration(
+          color: selected ? color : color.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(99),
+          border: Border.all(
+            color: selected ? color : color.withValues(alpha: 0.4),
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
+            color: selected ? Colors.white : color,
+          ),
+        ),
+      ),
     );
   }
 }
@@ -620,7 +802,7 @@ class _ResultCard extends StatelessWidget {
                     ),
                     if (start != null)
                       Text(
-                        egFormat(start, 'HH:mm'),
+                        egFormat(start, 'h:mm a'),
                         style: const TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.w800,

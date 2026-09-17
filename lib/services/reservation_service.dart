@@ -89,6 +89,28 @@ class ReservationService extends ChangeNotifier {
     }
   }
 
+  /// Changes a RESERVED reservation's pickup/dropoff stops and re-syncs the
+  /// ticket list. Returns an error message on failure, or null on success.
+  Future<String?> updatePoints(
+    String id, {
+    required String pickupPointId,
+    required String dropoffPointId,
+  }) async {
+    try {
+      await passengerApi.updateReservationPoints(
+        reservationId: id,
+        pickupPointId: pickupPointId,
+        dropoffPointId: dropoffPointId,
+      );
+      await syncFromLive();
+      return null;
+    } on PassengerApiException catch (e) {
+      return e.message;
+    } catch (_) {
+      return 'Could not change pickup/dropoff right now.';
+    }
+  }
+
   Future<void> remove(String id) async {
     _tickets = _tickets.where((t) => t.id != id).toList();
     notifyListeners();

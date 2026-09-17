@@ -30,7 +30,7 @@ class _SearchScreenState extends State<SearchScreen> {
   bool _locating = false;
   double? _lat;
   double? _lng;
-  ShuttleClass? _fleetFilter;
+  FleetService? _fleetFilter;
   bool _fleetInitialized = false;
 
   @override
@@ -49,22 +49,26 @@ class _SearchScreenState extends State<SearchScreen> {
     super.dispose();
   }
 
-  void _setFleetFilter(ShuttleClass? filter) {
+  void _setFleetFilter(FleetService? filter) {
     Haptics.selection();
     context.read<ShuttleService>().setFleetFilter(filter);
     setState(() => _fleetFilter = filter);
   }
 
-  /// Fleet filter match. null = All; luxury = the 3-seat sedan; any other
-  /// sentinel value ([ShuttleService.standardFleet]) = the merged 14 + 28
-  /// seat standard fleet.
-  bool _matchesFilter(ShuttleTrip trip, ShuttleClass? filter) {
+  /// Fleet filter match. null = All; otherwise the trip matches its raw
+  /// service code, its legacy vehicle class, or its seat capacity — so even
+  /// a brand-new admin-created service filters correctly.
+  bool _matchesFilter(ShuttleTrip trip, FleetService? filter) {
     if (filter == null) return true;
-    if (filter == ShuttleClass.luxury) {
-      return trip.vehicle == ShuttleClass.luxury || trip.totalSeats == 3;
+    final code = trip.serviceCode?.toUpperCase() ?? '';
+    if (filter.code.isNotEmpty && code == filter.code.toUpperCase()) return true;
+    final known = filter.knownClass;
+    if (trip.vehicle != null && known != null && trip.vehicle == known) {
+      return true;
     }
-    return trip.vehicle != ShuttleClass.luxury &&
-        (trip.vehicle != null || trip.totalSeats != 3);
+    final seats = trip.totalSeats;
+    if (seats <= 0 || filter.seatCapacity <= 0) return false;
+    return seats == filter.seatCapacity;
   }
 
   Future<void> _useCurrentLocation() async {
@@ -300,7 +304,7 @@ class _SearchScreenState extends State<SearchScreen> {
           Expanded(
             child: Column(
               children: [
-                if (shuttle.trips.isNotEmpty) _fleetFilterBar(shuttle.trips),
+                if (shuttle.trips.isNotEmpty) _fleetFilterBar(shuttle),
                 Expanded(child: _results(context, shuttle)),
               ],
             ),
@@ -330,42 +334,50 @@ class _SearchScreenState extends State<SearchScreen> {
     );
   }
 
-  Widget _fleetFilterBar(List<ShuttleTrip> trips) {
-    final luxury = trips
-        .where((t) => _matchesFilter(t, ShuttleClass.luxury))
-        .length;
-    final standard = trips
-        .where((t) => _matchesFilter(t, ShuttleService.standardFleet))
-        .length;
+  /// Real fleet services shown each alone (SoftCar-Go · 28, SoftCar-Fit · 14,
+  /// SoftCar-Luxury · 3, plus any the admin adds) after the All pill. Every
+  /// service chip shows its live trip count on the current results.
+  Widget _fleetFilterBar(ShuttleService shuttle) {
+    final trips = shuttle.trips;
+    final services = shuttle.fleetServices.isEmpty
+        ? ShuttleClass.values
+              .map(
+                (cls) => FleetService(
+                  id: cls.name,
+                  code: cls.apiCode,
+                  name: cls.name,
+                  description: '',
+                  seatCapacity: cls.seats,
+                  passengerTripPrice: -1,
+                  isActive: true,
+                  sortOrder: cls.index,
+                ),
+              )
+              .toList()
+        : shuttle.fleetServices;
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
-      child: Row(
-        children: [
-          _FilterPill(
-            label: L10n.t(context, 'allTrips'),
-            selected: _fleetFilter == null,
-            onTap: () => _setFleetFilter(null),
-          ),
-          const SizedBox(width: 8),
-          _FilterPill(
-            label: '${L10n.t(context, 'luxury3')} ($luxury)',
-            selected: _fleetFilter == ShuttleClass.luxury,
-            onTap: () => _setFleetFilter(
-              _fleetFilter == ShuttleClass.luxury ? null : ShuttleClass.luxury,
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: [
+            _FilterPill(
+              label: L10n.t(context, 'allTrips'),
+              selected: _fleetFilter == null,
+              onTap: () => _setFleetFilter(null),
             ),
-          ),
-          const SizedBox(width: 8),
-          _FilterPill(
-            label: '${L10n.t(context, 'standard14to28')} ($standard)',
-            selected:
-                _fleetFilter != null && _fleetFilter != ShuttleClass.luxury,
-            onTap: () => _setFleetFilter(
-              _fleetFilter != null && _fleetFilter != ShuttleClass.luxury
-                  ? null
-                  : ShuttleService.standardFleet,
-            ),
-          ),
-        ],
+            for (final s in services) ...[
+              const SizedBox(width: 8),
+              _FilterPill(
+                label:
+                    '${s.displayName} (${trips.where((t) => _matchesFilter(t, s)).length})',
+                selected: _fleetFilter?.code == s.code,
+                onTap: () =>
+                    _setFleetFilter(_fleetFilter?.code == s.code ? null : s),
+              ),
+            ],
+          ],
+        ),
       ),
     );
   }
@@ -567,7 +579,7 @@ class _SearchResultCardState extends State<_SearchResultCard> {
                         ),
                         alignment: Alignment.center,
                         child: Text(
-                          egFormat(trip.startTime, 'HH:mm'),
+                          egFormat(trip.startTime, 'h:mm a'),
                           style: const TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.w800,
@@ -980,7 +992,7 @@ class _ReturnLegRow extends StatelessWidget {
             const SizedBox(width: 6),
             Text(
               '${L10n.t(context, 'returnLeg')} · '
-              '${egFormat(ret.startTime, 'EEE, HH:mm')}',
+              '${egFormat(ret.startTime, 'EEE, h:mm a')}',
               style: const TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w800,

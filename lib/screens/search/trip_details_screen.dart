@@ -111,7 +111,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                           ),
                           const SizedBox(height: 2),
                           Text(
-                            egFormat(trip.startTime, 'EEE, MMM d · HH:mm'),
+                            egFormat(trip.startTime, 'EEE, MMM d · h:mm a'),
                             style: Theme.of(context)
                                 .textTheme
                                 .bodySmall
@@ -204,7 +204,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                             Text(
                               egFormat(
                                 trip.pickupPoints[i].arrivalAt(trip.startTime),
-                                'HH:mm',
+                                'h:mm a',
                               ),
                               style: Theme.of(context)
                                   .textTheme

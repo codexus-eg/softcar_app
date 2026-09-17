@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:latlong2/latlong.dart';
 
+import '../core/theme/app_colors.dart';
 import '../core/utils/egypt_time.dart';
 import 'user_profile.dart';
 
@@ -101,6 +102,68 @@ enum ShuttleClass {
 
   int get maxDefiniteTaken =>
       layout.expand((r) => [...r.left, ...r.right]).length;
+}
+
+/// A fleet service class as configured by the admin. Served live by
+/// `GET /api/mobile/fleet-services` so the passenger app automatically shows
+/// any service the admin creates or renames — no app release needed.
+class FleetService {
+  final String id;
+  final String code;
+  final String name;
+  final String description;
+  final int seatCapacity;
+  final double passengerTripPrice;
+  final bool isActive;
+  final int sortOrder;
+
+  const FleetService({
+    required this.id,
+    required this.code,
+    required this.name,
+    required this.description,
+    required this.seatCapacity,
+    required this.passengerTripPrice,
+    required this.isActive,
+    required this.sortOrder,
+  });
+
+  factory FleetService.fromJson(Object? raw) {
+    final json = raw is Map ? raw : const <String, Object?>{};
+    final code = json['code']?.toString() ?? '';
+    final seatCapacity = _Num.toInt(json['seatCapacity']);
+    return FleetService(
+      id: json['id']?.toString() ?? '',
+      code: code,
+      name:
+          json['name']?.toString() ??
+          json['nameAr']?.toString() ??
+          (code.isEmpty ? 'SoftCar' : code),
+      description:
+          json['description']?.toString() ??
+          json['descriptionAr']?.toString() ??
+          '',
+      seatCapacity: seatCapacity,
+      passengerTripPrice: _Num.toDouble(json['passengerTripPrice'], fallback: -1),
+      isActive: json['isActive'] != false,
+      sortOrder: _Num.toInt(json['sortOrder'], fallback: 100),
+    );
+  }
+
+  /// Best-known SoftCar class for this service code, when one exists.
+  ShuttleClass? get knownClass => ShuttleClass.fromApi(code);
+
+  IconData get icon =>
+      knownClass?.icon ?? Icons.airport_shuttle_rounded;
+
+  Color get color => knownClass?.color ?? AppColors.serviceShuttle;
+
+  String get displayName {
+    if (seatCapacity > 0 && !name.contains(seatCapacity.toString())) {
+      return '$name · $seatCapacity';
+    }
+    return name;
+  }
 }
 
 /// One row of a vehicle floor plan. Seats are numbered from the front.
@@ -236,6 +299,11 @@ class ShuttleStop {
 class _Num {
   static int toInt(Object? v, {int fallback = 0}) =>
       v is num ? v.toInt() : int.tryParse(v?.toString() ?? '') ?? fallback;
+
+  static double toDouble(Object? v, {double fallback = 0}) =>
+      v is num
+          ? v.toDouble()
+          : double.tryParse(v?.toString() ?? '') ?? fallback;
 }
 
 /// The driver assigned to a trip (from the backend's `driverProfile`).
@@ -318,6 +386,47 @@ class TripDriver {
   }
 }
 
+/// Converts a designer floor plan (from `/api/mobile/trips` `seatDesign`,
+/// `/api/mobile/seat-designs`, or the admin route map) into the classic
+/// [SeatRow] layout the seat grid already knows how to draw. Returns null for
+/// trips that predate the seat-designer so callers fall back to the legacy
+/// per-vehicle layouts or a generic grid.
+List<SeatRow>? seatRowsFromDesign(Object? design) {
+  if (design is! Map) return null;
+  final rawRows = design['rows'];
+  if (rawRows is! List || rawRows.isEmpty) return null;
+
+  List<int> sideNums(Object? side) {
+    if (side is! List) return const [];
+    final nums = <int>[];
+    for (final cell in side) {
+      if (cell is Map) {
+        final n = int.tryParse(cell['n']?.toString() ?? '');
+        if (n != null) nums.add(n);
+      }
+    }
+    return nums;
+  }
+
+  final rows = <SeatRow>[];
+  var i = 1;
+  for (final entry in rawRows) {
+    if (entry is! Map) continue;
+    final left = sideNums(entry['left']);
+    final right = sideNums(entry['right']);
+    if (left.isEmpty && right.isEmpty) continue;
+    rows.add(
+      SeatRow(
+        number: int.tryParse(entry['row']?.toString() ?? '') ?? i,
+        left: left,
+        right: right,
+      ),
+    );
+    i += 1;
+  }
+  return rows.isEmpty ? null : rows;
+}
+
 /// A live trip from `GET /api/mobile/trips`, mapped to what the UI needs.
 class ShuttleTrip {
   final String id;
@@ -328,6 +437,7 @@ class ShuttleTrip {
   final int totalSeats;
   final int seatsRemaining;
   final ShuttleClass? vehicle;
+  final String? serviceCode;
   final List<ShuttleStop> pickupPoints;
   final TripDriver? driver;
   final TripType tripType;
@@ -342,6 +452,11 @@ class ShuttleTrip {
   /// Keys are 1-based seat numbers from each reservation's `seatNumbers`.
   final Map<int, UserGender?> reservedSeats;
 
+  /// The admin-designed floor plan for this trip's fleet class + seat count,
+  /// served directly by `/api/mobile/trips` (`design.rows[].left/right[].n`).
+  /// Null for legacy trips that predate the seat-designer.
+  final Map<String, dynamic>? seatDesign;
+
   const ShuttleTrip({
     required this.id,
     required this.title,
@@ -351,6 +466,7 @@ class ShuttleTrip {
     required this.totalSeats,
     required this.seatsRemaining,
     required this.vehicle,
+    this.serviceCode,
     required this.pickupPoints,
     this.driver,
     this.tripType = TripType.oneTime,
@@ -360,6 +476,7 @@ class ShuttleTrip {
     this.occurrenceCount = 1,
     this.occurrences = const [],
     this.reservedSeats = const {},
+    this.seatDesign,
   });
 
   factory ShuttleTrip.fromJson(Map<String, dynamic> json) {
@@ -419,6 +536,7 @@ class ShuttleTrip {
       totalSeats: total,
       seatsRemaining: _int(json['seatsRemaining'], fallback: total),
       vehicle: ShuttleClass.fromApi(json['serviceClassCode']?.toString()),
+      serviceCode: json['serviceClassCode']?.toString(),
       pickupPoints: stops,
       driver: driver,
       tripType: TripType.fromApi(json['tripType']),
@@ -434,6 +552,10 @@ class ShuttleTrip {
       occurrenceCount: _int(json['occurrenceCount'], fallback: 1),
       occurrences: occurrences,
       reservedSeats: reserved,
+      seatDesign:
+          json['seatDesign'] is Map
+              ? Map<String, dynamic>.from(json['seatDesign'] as Map)
+              : null,
     );
   }
 
@@ -469,6 +591,11 @@ class ShuttleTrip {
       tripType.isRoundTrip && (roundTripPrice ?? 0) > 0
           ? roundTripPrice!
           : price;
+
+  /// Floor plan the seat map should draw: the designer's layout when the
+  /// backend served one, otherwise null so UIs fall back to the classic
+  /// per-vehicle layouts or a generic grid built from [totalSeats].
+  List<SeatRow>? get effectiveLayout => seatRowsFromDesign(seatDesign);
 
   static int _int(Object? v, {int fallback = 0}) =>
       v is num ? v.toInt() : int.tryParse(v?.toString() ?? '') ?? fallback;
@@ -699,6 +826,13 @@ class Ticket {
   /// one-time concrete reservations).
   final DateTime? serviceDate;
 
+  /// Id of the trip's pickup stop this reservation boards at (`pickupPoint`).
+  final String pickupPointId;
+
+  /// Id of the trip's dropoff stop this reservation alights at
+  /// (`dropoffPoint`).
+  final String dropoffPointId;
+
   const Ticket({
     required this.id,
     required this.ticketCode,
@@ -726,9 +860,16 @@ class Ticket {
     this.roundTripGroupId = '',
     this.recurringReservationId = '',
     this.serviceDate,
+    this.pickupPointId = '',
+    this.dropoffPointId = '',
   });
 
-  Ticket copyWith({String? paymentStatus, String? status}) {
+  Ticket copyWith({
+    String? paymentStatus,
+    String? status,
+    String? pickupPointId,
+    String? dropoffPointId,
+  }) {
     return Ticket(
       id: id,
       ticketCode: ticketCode,
@@ -756,6 +897,8 @@ class Ticket {
       roundTripGroupId: roundTripGroupId,
       recurringReservationId: recurringReservationId,
       serviceDate: serviceDate,
+      pickupPointId: pickupPointId ?? this.pickupPointId,
+      dropoffPointId: dropoffPointId ?? this.dropoffPointId,
     );
   }
 
@@ -829,7 +972,23 @@ class Ticket {
       recurringReservationId:
           json['recurringReservationId']?.toString() ?? '',
       serviceDate: DateTime.tryParse(json['serviceDate']?.toString() ?? ''),
+      pickupPointId: pickup['id']?.toString() ?? '',
+      dropoffPointId: dropoff['id']?.toString() ?? '',
     );
+  }
+
+  /// Pickup-capable stops (pointType PICKUP). Falls back to all stops when
+  /// the payload does not carry point types — mirrors `ShuttleTrip`.
+  List<ShuttleStop> get pickupStops {
+    final picks = pickupPoints.where((s) => !s.isDropoff).toList();
+    return picks.isNotEmpty ? picks : pickupPoints;
+  }
+
+  /// Dropoff-capable stops (pointType DROPOFF). Falls back to all stops when
+  /// the payload does not carry point types — mirrors `ShuttleTrip`.
+  List<ShuttleStop> get dropoffStops {
+    final drops = pickupPoints.where((s) => s.isDropoff).toList();
+    return drops.isNotEmpty ? drops : pickupPoints;
   }
 
   /// Stops that actually carry coordinates, in route order. These drive the

@@ -10,6 +10,7 @@ import '../../core/utils/haptics.dart';
 import '../../models/shuttle.dart';
 import '../../services/auth_service.dart';
 import '../../widgets/board_pass_qr.dart';
+import '../../widgets/google_map_kit.dart';
 import '../../widgets/live_bus_widgets.dart';
 
 /// Digital ticket shown right after booking and from the tickets list.
@@ -111,7 +112,7 @@ class TicketScreen extends StatelessWidget {
                   children: [
                     _TimeBlock(
                       label: L10n.t(context, 'departure'),
-                      value: egFormat(ticket.departure, 'HH:mm'),
+                      value: egFormat(ticket.departure, 'h:mm a'),
                       date: egFormat(ticket.departure, 'EEE, MMM d'),
                     ),
                     Expanded(
@@ -511,6 +512,34 @@ Widget _pointsDropdown(BuildContext context, Ticket ticket) {
               selectedStop: mainDropoff,
             ),
           ),
+          if (mainPickup != null &&
+              (mainPickup.latitude != 0 || mainPickup.longitude != 0)) ...[
+            const SizedBox(height: 10),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () => launchNavigation(
+                  mainPickup.latitude,
+                  mainPickup.longitude,
+                ),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppColors.accent,
+                  side: BorderSide(
+                    color: AppColors.accent.withValues(alpha: 0.4),
+                  ),
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                icon: const Icon(Icons.navigation_outlined, size: 18),
+                label: Text(
+                  L10n.t(context, 'navigateToPickup'),
+                  style: const TextStyle(fontWeight: FontWeight.w800),
+                ),
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -522,9 +551,9 @@ Widget _pointsDropdown(BuildContext context, Ticket ticket) {
   String _arrivalTime(Ticket ticket, ShuttleStop stop) {
     if (stop.isDropoff && stop.arrivalOffsetMin <= 0) {
       final end = ticket.estimatedEndTime;
-      if (end != null) return egFormat(end, 'HH:mm');
+      if (end != null) return egFormat(end, 'h:mm a');
     }
-    return egFormat(stop.arrivalAt(ticket.departure), 'HH:mm');
+    return egFormat(stop.arrivalAt(ticket.departure), 'h:mm a');
   }
 
   void _showStopSelectionDialog(

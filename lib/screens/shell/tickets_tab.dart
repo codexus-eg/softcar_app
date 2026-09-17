@@ -64,8 +64,9 @@ class _TicketsTabState extends State<TicketsTab> {
                   : ListView.builder(
                       padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
                       itemCount: groups.length,
-                      itemBuilder: (context, i) =>
-                          _TripSection(group: groups[i]),
+                      itemBuilder: (context, i) => groups[i].isRecurringPlan
+                          ? _RecurringMainCard(group: groups[i])
+                          : _TripSection(group: groups[i]),
                     ),
             ),
           ),
@@ -121,15 +122,27 @@ class _TripGroup {
     if (tickets.any((t) => t.isRecurring)) return 'recurring';
     return 'oneTime';
   }
+
+  /// True when this group is a whole recurring plan (every ticket is a paid
+  /// occurrence of the same plan). Rendered as one main trip card instead of
+  /// an expandable section; its days live on the dedicated days screen.
+  bool get isRecurringPlan =>
+      tickets.isNotEmpty &&
+      tickets.every((t) => t.isRecurring && t.recurringReservationId.isNotEmpty);
 }
 
 List<_TripGroup> _groupTickets(List<Ticket> tickets) {
   final order = <String>[];
   final map = <String, List<Ticket>>{};
   for (final t in tickets) {
+    // Every occurrence of a recurring plan is grouped under its shared
+    // recurringReservationId so the plan shows up as one main trip card.
+    final recurring = t.isRecurring && t.recurringReservationId.isNotEmpty;
     // Round-trip outbound + return legs are grouped under their shared
     // roundTripGroupId even when each leg rides on a different tripId.
-    final key = t.roundTripGroupId.isNotEmpty
+    final key = recurring
+        ? 'recurring:${t.recurringReservationId}'
+        : t.roundTripGroupId.isNotEmpty
         ? t.roundTripGroupId
         : t.tripId.isNotEmpty
         ? t.tripId
@@ -346,7 +359,7 @@ class _TripSection extends StatelessWidget {
                     children: [
                       Expanded(
                         child: Text(
-                          '${egFormat(group.departure, 'EEE, MMM d · HH:mm')} · '
+                          '${egFormat(group.departure, 'EEE, MMM d · h:mm a')} · '
                           '${group.tickets.length} ${L10n.t(context, 'tickets')}',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
@@ -393,6 +406,308 @@ class _TripSection extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Main card for a recurring plan on the tickets tab: one card per plan
+/// (not per day). Shows the trip, the reserved-day count and the plan period;
+/// tapping opens the dedicated days screen with every reserved day's ticket.
+class _RecurringMainCard extends StatelessWidget {
+  final _TripGroup group;
+  const _RecurringMainCard({required this.group});
+
+  @override
+  Widget build(BuildContext context) {
+    final tickets = group.tickets;
+    final first = tickets.first;
+    final last = tickets.last;
+    final upcoming = tickets.where((t) => t.isUpcoming).length;
+    final statusColor =
+        upcoming > 0 ? AppColors.success : AppColors.textSecondary;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: SoftCard(
+        padding: EdgeInsets.zero,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(20),
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute<void>(
+              builder: (_) => _RecurringDaysScreen(group: group),
+            ),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 14, 12, 14),
+            child: Row(
+              children: [
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: statusColor.withValues(alpha: 0.12),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    Icons.repeat_rounded,
+                    color: statusColor,
+                    size: 24,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        group.title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 15,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          Flexible(
+                            child: Text(
+                              '${L10n.t(context, 'recurringTrip')} · '
+                              '${group.tickets.length} '
+                              '${L10n.t(context, 'reservedDays')}',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: Theme.of(context).textTheme.bodySmall
+                                  ?.copyWith(color: AppColors.textSecondary),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          _GroupTypeChip(labelKey: 'recurring'),
+                        ],
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        '${L10n.t(context, 'planPeriod')}: '
+                        '${egFormat(first.serviceDay, 'MMM d')} – '
+                        '${egFormat(last.serviceDay, 'MMM d')}',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          fontSize: 11,
+                          color: AppColors.textTertiary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    const Icon(
+                      Icons.chevron_right_rounded,
+                      color: AppColors.textTertiary,
+                    ),
+                    const SizedBox(height: 4),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 5,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.accent.withValues(alpha: 0.10),
+                        borderRadius: BorderRadius.circular(99),
+                      ),
+                      child: Text(
+                        L10n.t(context, 'viewAllDays'),
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.accent,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Dedicated page opened from a recurring plan's main card. Lists every
+/// reserved day of the plan; tapping a day opens the full trip ticket page
+/// (the same /ticket-detail screen with navigation + trip details).
+class _RecurringDaysScreen extends StatelessWidget {
+  final _TripGroup group;
+  const _RecurringDaysScreen({required this.group});
+
+  @override
+  Widget build(BuildContext context) {
+    final tickets = group.tickets;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final dividerColor = isDark ? AppColors.dividerDark : AppColors.divider;
+    final upcoming = tickets.where((t) => t.isUpcoming).length;
+    final first = tickets.first;
+    final last = tickets.last;
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(L10n.t(context, 'recurringDaysTitle')),
+      ),
+      body: SafeArea(
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+          children: [
+            SoftCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          group.title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w800,
+                            fontSize: 16,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      _GroupTypeChip(labelKey: 'recurring'),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    '${first.from} → ${first.to}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: AppColors.textSecondary,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      _DaysSummaryChip(
+                        icon: Icons.date_range_rounded,
+                        color: AppColors.accent,
+                        label:
+                            '${tickets.length} ${L10n.t(context, 'reservedDays')}',
+                      ),
+                      _DaysSummaryChip(
+                        icon: Icons.schedule_rounded,
+                        color: AppColors.success,
+                        label: L10n.t(
+                          context,
+                          'upcomingCount',
+                        ).replaceFirst('{count}', '$upcoming'),
+                      ),
+                      _DaysSummaryChip(
+                        icon: Icons.event_rounded,
+                        color: AppColors.textSecondary,
+                        label:
+                            '${egFormat(first.serviceDay, 'MMM d')} – '
+                            '${egFormat(last.serviceDay, 'MMM d')}',
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            Padding(
+              padding: const EdgeInsets.only(bottom: 4),
+              child: Text(
+                L10n.t(context, 'allReservedDays'),
+                style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                  color: AppColors.textSecondary,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+            const SizedBox(height: 4),
+            for (var i = 0; i < tickets.length; i++) ...[
+              SoftCard(
+                padding: EdgeInsets.zero,
+                child: _TicketRow(ticket: tickets[i]),
+              ),
+              if (i < tickets.length - 1)
+                Divider(height: 24, color: Colors.transparent),
+            ],
+            Divider(height: 1, color: dividerColor),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                const Icon(
+                  Icons.info_outline_rounded,
+                  size: 15,
+                  color: AppColors.textTertiary,
+                ),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    L10n.t(context, 'tapDayForDetails'),
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: AppColors.textTertiary,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Small summary chip used on the recurring days header (count / period).
+class _DaysSummaryChip extends StatelessWidget {
+  final IconData icon;
+  final Color color;
+  final String label;
+  const _DaysSummaryChip({
+    required this.icon,
+    required this.color,
+    required this.label,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(99),
+        border: Border.all(color: color.withValues(alpha: 0.25)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 13, color: color),
+          const SizedBox(width: 5),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w800,
+              color: color,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -459,7 +774,7 @@ class _TicketRow extends StatelessWidget {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        egFormat(ticket.departure, 'EEE, MMM d · HH:mm'),
+                        egFormat(ticket.departure, 'EEE, MMM d · h:mm a'),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(

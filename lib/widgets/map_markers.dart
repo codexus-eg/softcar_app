@@ -1,10 +1,8 @@
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
-import 'package:flutter_map/flutter_map.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart' as gm;
 import 'package:latlong2/latlong.dart';
 
-import '../core/utils/egypt_map_style.dart' show lerpAngle;
+import 'google_map_kit.dart';
 
 /// Vehicle sprite per physical seat count (matches fleet classes).
 String spriteAssetForSeats(int seats) {
@@ -19,107 +17,97 @@ Size spriteSizeForSeats(int seats) {
   return const Size(40, 70);
 }
 
-/// Rotated vehicle marker for the driver's own car or a tracked shuttle.
-Marker vehicleSpriteMarker({
+final Map<int, gm.BitmapDescriptor> _vehicleIcons = {};
+
+/// Loads (and caches) the 3D vehicle sprite for [seats] as a marker icon.
+Future<gm.BitmapDescriptor> vehicleIconForSeats(int seats) async {
+  final cached = _vehicleIcons[seats];
+  if (cached != null) return cached;
+  final spriteSize = spriteSizeForSeats(seats);
+  final icon = await gm.BitmapDescriptor.asset(
+    const ImageConfiguration(),
+    spriteAssetForSeats(seats),
+    width: spriteSize.width,
+    height: spriteSize.height,
+  );
+  _vehicleIcons[seats] = icon;
+  return icon;
+}
+
+/// Rotated vehicle marker for a driver's own car or a tracked shuttle.
+Future<gm.Marker> vehicleSpriteMarker({
   required LatLng point,
   required int seats,
   double bearingDeg = 0,
-  double? width,
-}) {
-  final size = Size(width ?? spriteSizeForSeats(seats).width, 0);
-  final h = size.width * (seats <= 4 ? 118 / 64 : 132 / 74);
-  return Marker(
-    point: point,
-    width: size.width + 14,
-    height: h + 14,
-    child: _Shadowed(
-      bearingRad: bearingDeg * math.pi / 180,
-      asset: spriteAssetForSeats(seats),
-    ),
+  String id = 'vehicle',
+}) async {
+  final icon = await vehicleIconForSeats(seats);
+  return gm.Marker(
+    markerId: gm.MarkerId(id),
+    position: toGm(point),
+    icon: icon,
+    rotation: bearingDeg,
+    anchor: const Offset(0.5, 0.5),
+    zIndexInt: 20,
   );
 }
 
-class _Shadowed extends StatelessWidget {
-  const _Shadowed({required this.bearingRad, required this.asset});
-
-  final double bearingRad;
-  final String asset;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Transform.rotate(
-          angle: bearingRad,
-          child: DecoratedBox(
-            decoration: const BoxDecoration(
-              boxShadow: [
-                BoxShadow(color: Color(0x73000000), blurRadius: 10, offset: Offset(0, 4)),
-              ],
-            ),
-            child: Image.asset(asset, fit: BoxFit.contain),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-/// Gentle bobbing human figure. genderCode: 'MALE'|'FEMALE'|'M'|'F'|null(male).
-Marker humanSpriteMarker(LatLng point, String? genderCode, {double scale = 1}) {
-  final female = ['FEMALE', 'F'].contains(genderCode?.toUpperCase());
-  return Marker(
-    point: point,
-    width: 30 * scale,
-    height: 38 * scale,
-    child: _Bobbing(asset: female ? 'assets/map/human_female.png' : 'assets/map/human_male.png'),
+/// "You are here" marker drawn from the passenger's live position.
+Future<gm.Marker> userDotMarker(
+  LatLng point, {
+  Color? color,
+  String id = 'me',
+}) async {
+  final icon = await userDot(color ?? const Color(0xFF1E88E5));
+  return gm.Marker(
+    markerId: gm.MarkerId(id),
+    position: toGm(point),
+    icon: icon,
+    anchor: const Offset(0.5, 0.5),
+    zIndexInt: 30,
   );
 }
 
-class _Bobbing extends StatefulWidget {
-  const _Bobbing({required this.asset});
-  final String asset;
-
-  @override
-  State<_Bobbing> createState() => _BobbingState();
+/// Coloured bus stop on the route: origin / destination / intermediate.
+Future<gm.Marker> stopMarker(
+  int index,
+  LatLng point, {
+  required int total,
+  required Color accent,
+  Color? wayColor,
+  double bearingDeg = 0,
+}) async {
+  final icon = index == 0
+      ? await originDot(accent)
+      : index == total - 1
+          ? await destinationPin(accent)
+          : await waypointDot(wayColor ?? const Color(0xFF9AA3AB));
+  return gm.Marker(
+    markerId: gm.MarkerId('stop-$index'),
+    position: toGm(point),
+    icon: icon,
+    rotation: bearingDeg,
+    anchor: Offset(0.5, index == total - 1 ? 0.95 : 0.5),
+    zIndexInt: 2,
+  );
 }
 
-class _BobbingState extends State<_Bobbing> with SingleTickerProviderStateMixin {
-  late final AnimationController _c =
-      AnimationController(vsync: this, duration: const Duration(milliseconds: 900))..repeat(reverse: true);
-
-  @override
-  void dispose() {
-    _c.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _c,
-      builder: (_, __) => Transform.translate(
-        offset: Offset(0, -3 * _c.value),
-        child: Opacity(opacity: 0.92, child: Image.asset(widget.asset)),
-      ),
-    );
-  }
+double lerpAngle(double a, double b, double t) {
+  final diff = (b - a + 540) % 360 - 180;
+  return a + diff * t;
 }
 
-/// Creates a smooth-interpolated [Marker] for a vehicle that may be moving.
-///
-/// Call this from a [MarkerLayer] and pass the same [from] and [to] positions
-/// plus the animation [t] (0→1) so the caller controls the interpolation.
-Marker animatedVehicleMarker({
+/// A smooth-interpolated vehicle marker between [from] and [to] at animation
+/// progress [t] (0→1). Used while the bus moves between GPS fixes.
+Future<gm.Marker> animatedVehicleMarker({
   required LatLng from,
   required LatLng to,
   required double t,
   required int seats,
   required double fromBearing,
   required double toBearing,
-  double width = 42,
-}) {
+  String id = 'vehicle',
+}) async {
   final curve = Curves.easeOut.transform(t.clamp(0.0, 1.0));
   final pos = LatLng(
     from.latitude + (to.latitude - from.latitude) * curve,
@@ -130,83 +118,6 @@ Marker animatedVehicleMarker({
     point: pos,
     seats: seats,
     bearingDeg: bearing,
-    width: width,
+    id: id,
   );
-}
-
-/// Standing / parked vehicle marker with slight desaturation.
-///
-/// Used for decorative stop-point markers during IN_PROGRESS trips.
-Marker standingVehicleMarker({
-  required LatLng point,
-  required int seats,
-  double bearingDeg = 0,
-  double width = 30,
-}) {
-  final size = Size(width, 0);
-  final h = size.width * (seats <= 4 ? 118 / 64 : 132 / 74);
-  return Marker(
-    point: point,
-    width: size.width + 14,
-    height: h + 14,
-    child: Opacity(
-      opacity: 0.85,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Transform.rotate(
-            angle: bearingDeg * math.pi / 180,
-            child: DecoratedBox(
-              decoration: const BoxDecoration(
-                boxShadow: [
-                  BoxShadow(color: Color(0x40000000), blurRadius: 6, offset: Offset(0, 3)),
-                ],
-              ),
-              child: Image.asset(
-                spriteAssetForSeats(seats),
-                fit: BoxFit.contain,
-                color: Colors.grey.shade400,
-                colorBlendMode: BlendMode.saturation,
-              ),
-            ),
-          ),
-        ],
-      ),
-    ),
-  );
-}
-
-/// Crowd counter chip: small rounded badge showing passenger count near the
-/// vehicle marker. Composed as a regular widget, not a bitmap.
-class CrowdCounterChip extends StatelessWidget {
-  final int onboard;
-  const CrowdCounterChip({super.key, required this.onboard});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: const [
-          BoxShadow(color: Colors.black26, blurRadius: 6, offset: Offset(0, 2)),
-        ],
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Text('👥', style: TextStyle(fontSize: 11)),
-          const SizedBox(width: 2),
-          Text(
-            '$onboard',
-            style: const TextStyle(
-              fontSize: 10,
-              fontWeight: FontWeight.w900,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 }

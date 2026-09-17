@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:latlong2/latlong.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/l10n/l10n.dart';
@@ -8,7 +8,7 @@ import '../../core/theme/app_colors.dart';
 import '../../models/shuttle.dart';
 import '../../models/user_profile.dart';
 import '../../services/auth_service.dart';
-import '../../services/passenger_location_service.dart';
+import 'place_editor_screen.dart';
 
 /// Full, editable passenger profile: photo, personal info (name, email,
 /// phone, gender, date of birth, emergency contact), referral code and
@@ -192,7 +192,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 28),
         children: [
-          _AvatarHeader(profile: profile),
+          const _AvatarHeader(),
           const SizedBox(height: 20),
 
           _SectionTitle(L10n.t(context, 'personalInfo')),
@@ -470,35 +470,184 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 }
 
-class _AvatarHeader extends StatelessWidget {
-  const _AvatarHeader({required this.profile});
+class _AvatarHeader extends StatefulWidget {
+  const _AvatarHeader();
 
-  final UserProfile profile;
+  @override
+  State<_AvatarHeader> createState() => _AvatarHeaderState();
+}
+
+class _AvatarHeaderState extends State<_AvatarHeader> {
+  bool _busy = false;
+
+  Future<void> _showPhotoOptions() async {
+    final auth = context.read<AuthService>();
+    final hasPhoto = (auth.profile.image?.isNotEmpty ?? false);
+    final choice = await showModalBottomSheet<String>(
+      context: context,
+      showDragHandle: true,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.camera_alt_outlined),
+              title: Text(L10n.t(ctx, 'takePhoto')),
+              onTap: () => Navigator.of(ctx).pop('camera'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library_outlined),
+              title: Text(L10n.t(ctx, 'fromGallery')),
+              onTap: () => Navigator.of(ctx).pop('gallery'),
+            ),
+            if (hasPhoto)
+              ListTile(
+                leading: const Icon(Icons.delete_outline_rounded,
+                    color: AppColors.error),
+                title: Text(
+                  L10n.t(ctx, 'removePhoto'),
+                  style: const TextStyle(color: AppColors.error),
+                ),
+                onTap: () => Navigator.of(ctx).pop('remove'),
+              ),
+          ],
+        ),
+      ),
+    );
+    if (choice == null || !mounted) return;
+    switch (choice) {
+      case 'camera':
+        await _pick(ImageSource.camera);
+      case 'gallery':
+        await _pick(ImageSource.gallery);
+      case 'remove':
+        await _remove();
+    }
+  }
+
+  Future<void> _pick(ImageSource source) async {
+    final auth = context.read<AuthService>();
+    XFile? picked;
+    try {
+      picked = await ImagePicker().pickImage(
+        source: source,
+        maxWidth: 1200,
+        imageQuality: 88,
+      );
+    } catch (_) {
+      picked = null;
+    }
+    if (picked == null) return;
+    setState(() => _busy = true);
+    try {
+      final bytes = await picked.readAsBytes();
+      final name = picked.name.toLowerCase();
+      final contentType = name.endsWith('.png')
+          ? 'image/png'
+          : name.endsWith('.webp')
+          ? 'image/webp'
+          : 'image/jpeg';
+      final url = await auth.uploadAvatar(bytes, contentType);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            url != null && url.isNotEmpty
+                ? L10n.t(context, 'photoUpdated')
+                : L10n.t(context, 'photoUploadFailed'),
+          ),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(L10n.t(context, 'photoUploadFailed')),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _remove() async {
+    final auth = context.read<AuthService>();
+    setState(() => _busy = true);
+    final ok = await auth.removeAvatar();
+    if (!mounted) return;
+    setState(() => _busy = false);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          ok ? L10n.t(context, 'photoRemoved') : L10n.t(context, 'photoUploadFailed'),
+        ),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
+    final auth = context.watch<AuthService>();
+    final profile = auth.isLoggedIn ? auth.profile : const UserProfile();
     final imageUrl = profile.image;
 
     return Row(
       children: [
-        Container(
-          width: 88,
-          height: 88,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: AppColors.accent.withValues(alpha: 0.14),
-            image: imageUrl != null && imageUrl.isNotEmpty
-                ? DecorationImage(
-                    image: NetworkImage(
-                        'https://softcarshuttle.com$imageUrl'),
-                    fit: BoxFit.cover,
-                  )
-                : null,
-          ),
-          alignment: Alignment.center,
-          child: imageUrl == null || imageUrl.isEmpty
-              ? Icon(Icons.person_rounded, size: 44, color: AppColors.accent)
-              : null,
+        Stack(
+          children: [
+            Container(
+              width: 88,
+              height: 88,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: AppColors.accent.withValues(alpha: 0.14),
+                image: imageUrl != null && imageUrl.isNotEmpty
+                    ? DecorationImage(
+                        image: NetworkImage(
+                            'https://softcarshuttle.com$imageUrl'),
+                        fit: BoxFit.cover,
+                      )
+                    : null,
+              ),
+              alignment: Alignment.center,
+              child: imageUrl == null || imageUrl.isEmpty
+                  ? Icon(Icons.person_rounded, size: 44, color: AppColors.accent)
+                  : null,
+            ),
+            Positioned(
+              right: 0,
+              bottom: 0,
+              child: Material(
+                color: AppColors.accent,
+                shape: const CircleBorder(),
+                child: InkWell(
+                  customBorder: const CircleBorder(),
+                  onTap: _busy ? null : _showPhotoOptions,
+                  child: Padding(
+                    padding: const EdgeInsets.all(6),
+                    child: _busy
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                        : const Icon(
+                            Icons.camera_alt_rounded,
+                            size: 16,
+                            color: Colors.white,
+                          ),
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
         const SizedBox(width: 16),
         Expanded(
@@ -675,7 +824,9 @@ class _SavedPlacesList extends StatelessWidget {
                 ),
               );
               if (ok != true || !ctx.mounted) return;
-              await ctx.read<AuthService>().deletePlace(place.id);
+              final auth = ctx.read<AuthService>();
+              await auth.deletePlace(place.id);
+              await auth.refreshProfile();
             },
           ),
           IconButton(
@@ -695,9 +846,10 @@ class _SavedPlacesList extends StatelessWidget {
     SavedPlace? place,
   }) {
     Navigator.of(context)
-        .push(
+        .push<void>(
           MaterialPageRoute<void>(
-            builder: (_) => _PlaceScreen(place: place, placeType: placeType),
+            builder: (_) =>
+                PlaceEditorScreen(place: place, placeType: placeType),
           ),
         )
         .then((_) {
@@ -708,178 +860,6 @@ class _SavedPlacesList extends StatelessWidget {
             ctx.read<AuthService>().refreshProfile();
           }
         });
-  }
-}
-
-class _PlaceScreen extends StatefulWidget {
-  const _PlaceScreen({required this.place, required this.placeType});
-
-  final SavedPlace? place;
-  final String placeType;
-
-  @override
-  State<_PlaceScreen> createState() => _PlaceScreenState();
-}
-
-class _PlaceScreenState extends State<_PlaceScreen> {
-  late final TextEditingController _name;
-  late final TextEditingController _address;
-  LatLng? _coords;
-  bool _locating = false;
-  bool _saving = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _name = TextEditingController(text: widget.place?.name ?? '');
-    _address = TextEditingController(text: widget.place?.address ?? '');
-    if (widget.place != null) {
-      _coords = LatLng(widget.place!.lat, widget.place!.lng);
-    }
-  }
-
-  @override
-  void dispose() {
-    _name.dispose();
-    _address.dispose();
-    super.dispose();
-  }
-
-  Future<void> _locate() async {
-    setState(() => _locating = true);
-    if (!await PassengerLocationService.instance.ensurePermission()) {
-      if (mounted) setState(() => _locating = false);
-      return;
-    }
-    try {
-      final fix = await PassengerLocationService.instance.getSingleFix();
-      if (mounted && fix != null) {
-        setState(() {
-          _coords = fix;
-          _locating = false;
-        });
-      } else if (mounted) {
-        setState(() => _locating = false);
-      }
-    } catch (_) {
-      if (mounted) setState(() => _locating = false);
-    }
-  }
-
-  Future<void> _save() async {
-    final auth = context.read<AuthService>();
-    final name = _name.text.trim();
-    if (name.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(L10n.t(context, 'savedPlaceRequired'))),
-      );
-      return;
-    }
-    setState(() => _saving = true);
-    String? err;
-    if (widget.place != null) {
-      err = await auth.updatePlace(widget.place!.id, {
-        'name': name,
-        'address': _address.text.trim(),
-        if (_coords != null)
-          'lat': _coords!.latitude,
-        if (_coords != null)
-          'lng': _coords!.longitude,
-      });
-    } else {
-      err = await auth.savePlace(
-        label: name,
-        name: name,
-        address: _address.text.trim(),
-        lat: _coords?.latitude ?? 0,
-        lng: _coords?.longitude ?? 0,
-        placeType: widget.placeType,
-      );
-    }
-    if (!mounted) return;
-    setState(() => _saving = false);
-    if (err != null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(err)),
-      );
-      return;
-    }
-    Navigator.of(context).pop();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final title = widget.place != null
-        ? L10n.t(context, 'editSavedPlace')
-        : widget.placeType == 'HOME'
-        ? L10n.t(context, 'homePlace')
-        : widget.placeType == 'WORK'
-        ? L10n.t(context, 'workPlace')
-        : L10n.t(context, 'addPlace');
-    return Scaffold(
-      appBar: AppBar(title: Text(title)),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          TextField(
-            controller: _name,
-            autofocus: widget.place == null,
-            textInputAction: TextInputAction.next,
-            decoration: InputDecoration(
-              labelText: L10n.t(context, 'savedPlaceName'),
-              prefixIcon: const Icon(Icons.place_outlined),
-            ),
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: _address,
-            textInputAction: TextInputAction.done,
-            onSubmitted: (_) => _save(),
-            decoration: InputDecoration(
-              labelText: L10n.t(context, 'savedPlaceAddress'),
-              hintText: L10n.t(context, 'savedPlaceHint'),
-              prefixIcon: const Icon(Icons.alt_route_rounded),
-            ),
-          ),
-          const SizedBox(height: 12),
-          if (_coords != null)
-            Text(
-              '${_coords!.latitude.toStringAsFixed(5)}, ${_coords!.longitude.toStringAsFixed(5)}',
-              style: const TextStyle(
-                fontSize: 12,
-                color: AppColors.textSecondary,
-              ),
-            ),
-          const SizedBox(height: 12),
-          OutlinedButton.icon(
-            onPressed: _locating ? null : _locate,
-            icon: _locating
-                ? const SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(Icons.my_location_rounded),
-            label: Text(L10n.t(context, 'savedPlaceUseCurrent')),
-          ),
-          const SizedBox(height: 16),
-          FilledButton.icon(
-            onPressed: _saving ? null : _save,
-            icon: _saving
-                ? const SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(
-                        strokeWidth: 2, color: Colors.white),
-                  )
-                : const Icon(Icons.check_rounded),
-            label: Text(
-              _saving ? L10n.t(context, 'saving') : L10n.t(context, 'save'),
-            ),
-          ),
-        ],
-      ),
-    );
   }
 }
 

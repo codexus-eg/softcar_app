@@ -1,15 +1,16 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_map/flutter_map.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart' as gm;
+import 'package:latlong2/latlong.dart';
 import '../core/l10n/l10n.dart';
 import '../core/theme/app_colors.dart';
-import '../core/utils/egypt_map_style.dart';
 import '../core/utils/formatters.dart';
 import '../models/shuttle.dart';
 import '../services/live_tracking_service.dart';
 import '../services/passenger_location_service.dart';
-import 'road_route_layer.dart';
+import 'google_map_kit.dart';
+import 'fullscreen_map_screen.dart';
 import 'user_location_marker.dart';
 
 /// Compact live-status strip used on the home "boarding next" card. Polls a
@@ -156,8 +157,15 @@ class _LiveBusCardState extends State<LiveBusCard> {
   Timer? _timer;
   late final LiveTripTracker _tracker;
   late final ShuttleStop? _stop;
-  final MapController _map = MapController();
+  gm.GoogleMapController? _controller;
   bool _locating = false;
+
+  gm.BitmapDescriptor? _originIcon;
+  gm.BitmapDescriptor? _wayIcon;
+  gm.BitmapDescriptor? _destIcon;
+  gm.BitmapDescriptor? _userIcon;
+  gm.BitmapDescriptor? _busDotIcon;
+  Set<gm.Polyline> _polylines = {};
 
   @override
   void initState() {
@@ -172,6 +180,36 @@ class _LiveBusCardState extends State<LiveBusCard> {
     final location = PassengerLocationService.instance;
     location.addListener(_onLocationChanged);
     unawaited(location.start());
+    unawaited(_loadIcons());
+  }
+
+  Future<void> _loadIcons() async {
+    final stripColor = widget.ticket.vehicleClass?.color ?? AppColors.accent;
+    final results = await Future.wait(<Future<Object>>[
+      originDot(stripColor),
+      waypointDot(AppColors.textTertiary),
+      destinationPin(stripColor),
+      userDot(const Color(0xFF1E88E5)),
+      _busIcon(stripColor),
+    ]);
+    if (!mounted) return;
+    setState(() {
+      _originIcon = results[0] as gm.BitmapDescriptor;
+      _wayIcon = results[1] as gm.BitmapDescriptor;
+      _destIcon = results[2] as gm.BitmapDescriptor;
+      _userIcon = results[3] as gm.BitmapDescriptor;
+      _busDotIcon = results[4] as gm.BitmapDescriptor;
+    });
+    final pts = _tracker.path.points;
+    if (pts.length < 2) return;
+    final polylines = await routePolylines(
+      id: 'card-route',
+      points: pts,
+      color: stripColor,
+      width: 3,
+    );
+    if (!mounted) return;
+    setState(() => _polylines = {...polylines});
   }
 
   void _onLocationChanged() {
@@ -184,7 +222,7 @@ class _LiveBusCardState extends State<LiveBusCard> {
     final location = PassengerLocationService.instance;
     location.removeListener(_onLocationChanged);
     location.stop();
-    _map.dispose();
+    _controller?.dispose();
     super.dispose();
   }
 
@@ -199,7 +237,11 @@ class _LiveBusCardState extends State<LiveBusCard> {
         _snack(L10n.t(context, 'locationUnavailable'));
         return;
       }
-      _map.move(pos, 15);
+      await _controller?.moveCamera(
+        gm.CameraUpdate.newCameraPosition(
+          gm.CameraPosition(target: toGm(pos), zoom: 15),
+        ),
+      );
     } finally {
       if (mounted) setState(() => _locating = false);
     }
@@ -208,6 +250,53 @@ class _LiveBusCardState extends State<LiveBusCard> {
   void _snack(String message) {
     ScaffoldMessenger.of(context)
         .showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  Set<gm.Marker> _markersFor(List<LatLng> pts, LatLng busPos) {
+    final markers = <gm.Marker>{};
+    for (var i = 0; i < pts.length; i++) {
+      final icon = i == 0
+          ? _originIcon
+          : i == pts.length - 1
+          ? _destIcon
+          : _wayIcon;
+      if (icon == null) continue;
+      markers.add(
+        gm.Marker(
+          markerId: gm.MarkerId('stop-$i'),
+          position: toGm(pts[i]),
+          icon: icon,
+          anchor: Offset(0.5, i == pts.length - 1 ? 0.95 : 0.5),
+          zIndexInt: 2,
+        ),
+      );
+    }
+    final busIcon = _busDotIcon;
+    if (busIcon != null) {
+      markers.add(
+        gm.Marker(
+          markerId: const gm.MarkerId('bus'),
+          position: toGm(busPos),
+          icon: busIcon,
+          anchor: const Offset(0.5, 0.5),
+          zIndexInt: 20,
+        ),
+      );
+    }
+    final userIcon = _userIcon;
+    final userPos = PassengerLocationService.instance.currentPosition;
+    if (userPos != null && userIcon != null) {
+      markers.add(
+        gm.Marker(
+          markerId: const gm.MarkerId('me'),
+          position: toGm(userPos),
+          icon: userIcon,
+          anchor: const Offset(0.5, 0.5),
+          zIndexInt: 30,
+        ),
+      );
+    }
+    return markers;
   }
 
   @override
@@ -227,7 +316,6 @@ class _LiveBusCardState extends State<LiveBusCard> {
             ? _tracker.remainingStops(now)
             : _tracker.remainingStopsFromPosition(liveGps);
     final pts = _tracker.path.points;
-    final stripColor = widget.ticket.vehicleClass?.color ?? AppColors.accent;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -239,65 +327,25 @@ class _LiveBusCardState extends State<LiveBusCard> {
             child: Stack(
               children: [
                 Positioned.fill(
-                  child: FlutterMap(
-                    mapController: _map,
-                    options: MapOptions(
-                      initialCameraFit: CameraFit.bounds(
-                        bounds: LatLngBounds.fromPoints(pts),
-                        padding: const EdgeInsets.all(30),
-                      ),
-                      interactionOptions: const InteractionOptions(
-                        flags: InteractiveFlag.drag | InteractiveFlag.pinchZoom,
-                      ),
+                  child: gm.GoogleMap(
+                    initialCameraPosition: gm.CameraPosition(
+                      target: toGm(pts.first),
+                      zoom: 12,
                     ),
-                    children: [
-                      TileLayer(
-                        urlTemplate: tileUrlForTime(),
-                        subdomains: subdomainsForTime() ?? const [],
-                        userAgentPackageName: 'com.softcar.shuttle',
-                      ),
-                      RoadRoutePolyline(
-                        points: pts,
-                        color: stripColor,
-                        strokeWidth: 3.5,
-                      ),
-                      MarkerLayer(
-                        markers: [
-                          for (var i = 0; i < pts.length; i++)
-                            Marker(
-                              point: pts[i],
-                              width: 28,
-                              height: 28,
-                              child: Icon(
-                                i == 0
-                                    ? Icons.trip_origin
-                                    : i == pts.length - 1
-                                    ? Icons.fmd_good_rounded
-                                    : Icons.circle,
-                                size: i == 0 || i == pts.length - 1 ? 22 : 10,
-                                color:
-                                    i == 0 || i == pts.length - 1
-                                        ? stripColor
-                                        : AppColors.textTertiary,
-                              ),
-                            ),
-                          Marker(
-                            point: position,
-                            width: 34,
-                            height: 34,
-                            child: _BusMarker(color: stripColor),
-                          ),
-                          if (PassengerLocationService
-                                  .instance.currentPosition !=
-                              null)
-                            UserLocationMarker(
-                              point: PassengerLocationService
-                                  .instance.currentPosition!,
-                              size: 22,
-                            ).toMarker(),
-                        ],
-                      ),
-                    ],
+                    onMapCreated: (c) {
+                      _controller = c;
+                      c.moveCamera(cameraForBounds(pts, padding: 30));
+                    },
+                    markers: _markersFor(pts, position),
+                    polylines: _polylines,
+                    style: googleMapStyle(),
+                    zoomControlsEnabled: false,
+                    compassEnabled: false,
+                    mapToolbarEnabled: false,
+                    myLocationButtonEnabled: false,
+                    myLocationEnabled: false,
+                    rotateGesturesEnabled: true,
+                    tiltGesturesEnabled: true,
                   ),
                 ),
                 Positioned(
@@ -307,6 +355,15 @@ class _LiveBusCardState extends State<LiveBusCard> {
                     busy: _locating,
                     tooltip: L10n.t(context, 'locateMe'),
                     onTap: _locateMe,
+                  ),
+                ),
+                Positioned(
+                  top: 8,
+                  right: 8,
+                  child: MapExpandButton(
+                    points: pts,
+                    originLabel: widget.ticket.from,
+                    destinationLabel: widget.ticket.to,
                   ),
                 ),
               ],
@@ -415,6 +472,52 @@ class _LiveBusCardState extends State<LiveBusCard> {
   }
 }
 
+/// Painted "shuttle on the road" badge: a compact rounded-square marker with
+/// the bus glyph, drawn once and reused by Google Maps. ~42 px on screen and
+/// visually distinct from the round stop dots.
+Future<gm.BitmapDescriptor> _busIcon(Color color) => paintIcon(
+      key: 'bus-${color.toARGB32()}',
+      px: 42,
+      painter: (c, s) {
+        final body = RRect.fromRectAndRadius(
+          Rect.fromLTWH(s * 0.12, s * 0.12, s * 0.76, s * 0.76),
+          Radius.circular(s * 0.22),
+        );
+        c.drawRRect(
+          RRect.fromRectAndRadius(
+            body.outerRect.inflate(s * 0.1),
+            Radius.circular(s * 0.28),
+          ),
+          Paint()..color = Colors.black.withValues(alpha: 0.08),
+        );
+        c.drawRRect(body, Paint()..color = color);
+        c.drawRRect(
+          RRect.fromRectAndRadius(
+            Rect.fromLTWH(s * 0.2, s * 0.2, s * 0.6, s * 0.6),
+            Radius.circular(s * 0.18),
+          ),
+          Paint()..color = Colors.white.withValues(alpha: 0.28),
+        );
+        final icon = Icons.airport_shuttle_rounded;
+        final tp = TextPainter(
+          textDirection: TextDirection.ltr,
+          text: TextSpan(
+            text: String.fromCharCode(icon.codePoint),
+            style: TextStyle(
+              fontSize: s * 0.46,
+              fontFamily: icon.fontFamily,
+              package: icon.fontPackage,
+              height: 1,
+            ),
+          ),
+        )..layout();
+        tp.paint(
+          c,
+          Offset((s - tp.width) / 2, (s - tp.height) / 2),
+        );
+      },
+    );
+
 /// The animated "live" dot used by both widgets.
 class _PulseDot extends StatelessWidget {
   const _PulseDot();
@@ -433,36 +536,6 @@ class _PulseDot extends StatelessWidget {
             blurRadius: 4,
           ),
         ],
-      ),
-    );
-  }
-}
-
-/// Minibus marker rendered on top of the map at the latest known position.
-class _BusMarker extends StatelessWidget {
-  final Color color;
-  const _BusMarker({required this.color});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(6),
-      decoration: BoxDecoration(
-        color: color,
-        shape: BoxShape.circle,
-        border: Border.all(color: Colors.white, width: 2.5),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.25),
-            blurRadius: 8,
-            offset: const Offset(0, 3),
-          ),
-        ],
-      ),
-      child: const Icon(
-        Icons.airport_shuttle_rounded,
-        color: Colors.white,
-        size: 18,
       ),
     );
   }

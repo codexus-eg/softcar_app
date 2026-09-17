@@ -1,18 +1,17 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_map/flutter_map.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart' as gm;
 import 'package:latlong2/latlong.dart';
 
 import '../../core/l10n/l10n.dart';
 import '../../core/theme/app_colors.dart';
-import '../../core/utils/egypt_map_style.dart';
 import '../../core/utils/formatters.dart';
 import '../../models/shuttle.dart';
 import '../../services/live_tracking_service.dart';
 import '../../services/passenger_api.dart';
 import '../../services/passenger_location_service.dart';
-import '../../widgets/road_route_layer.dart';
+import '../../widgets/google_map_kit.dart';
 import 'dart:math' as math;
 
 import '../../widgets/map_markers.dart';
@@ -37,13 +36,22 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
   bool _refreshing = false;
   late final AnimationController _move;
 
-  final MapController _map = MapController();
+  gm.GoogleMapController? _map;
   bool _mapReady = false;
   bool _cameraFitted = false;
   bool _locating = false;
 
   LatLng? _from;
   LatLng? _to;
+
+  // Preloaded marker icons so the animated bus marker can be rebuilt cheaply
+  // on every animation tick without awaiting platform calls inside build().
+  gm.BitmapDescriptor? _originIcon;
+  gm.BitmapDescriptor? _destIcon;
+  gm.BitmapDescriptor? _wayIcon;
+  gm.BitmapDescriptor? _userIcon;
+  gm.BitmapDescriptor? _vehicleIcon;
+  Set<gm.Polyline> _polylines = {};
 
   @override
   void initState() {
@@ -68,19 +76,29 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
       _cameraFitted = true;
       final pts = _tracker?.path.points ?? const <LatLng>[];
       if (pts.isEmpty) {
-        _map.move(pos, 16);
+        _moveCamera(pos, 16);
         return;
       }
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) return;
-        _map.fitCamera(
-          CameraFit.bounds(
-            bounds: LatLngBounds.fromPoints([...pts, pos]),
-            padding: const EdgeInsets.fromLTRB(40, 120, 40, 280),
+        if (!mounted || _map == null) return;
+        _map!.moveCamera(
+          cameraForBounds(
+            [...pts, pos],
+            padding: 120,
           ),
         );
       });
     }
+  }
+
+  void _moveCamera(LatLng target, double zoom) {
+    final controller = _map;
+    if (controller == null) return;
+    controller.moveCamera(
+      gm.CameraUpdate.newCameraPosition(
+        gm.CameraPosition(target: toGm(target), zoom: zoom),
+      ),
+    );
   }
 
   /// Requests permission, grabs a fix and snaps the camera to the
@@ -99,7 +117,7 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
         _toast(L10n.t(context, 'locationUnavailable'));
         return;
       }
-      _map.move(pos, 16);
+      _moveCamera(pos, 16);
     } finally {
       if (mounted) setState(() => _locating = false);
     }
@@ -128,10 +146,102 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
       _from = pos;
       _to = pos;
     });
+    unawaited(_setupMaps(ticket));
     _timer = Timer.periodic(
       const Duration(seconds: 5),
       (_) => _refreshAndTick(),
     );
+  }
+
+  /// Resolves the self-gesture icons:
+  ///   RecognizerKind.singleTap default taps the live map.
+  Future<void> _setupMaps(Ticket ticket) async {
+    final seats = ticket.vehicleClass?.seats ?? 14;
+    final pts = ticket.vehicleClass == null
+        ? const <LatLng>[]
+        : _tracker?.path.points ?? const <LatLng>[];
+    final results = await Future.wait(<Future<Object>>[
+      originDot(AppColors.accent),
+      destinationPin(AppColors.accent),
+      waypointDot(AppColors.textTertiary),
+      userDot(const Color(0xFF1E88E5)),
+      vehicleIconForSeats(seats),
+    ]);
+    if (!mounted) return;
+    setState(() {
+      _originIcon = results[0] as gm.BitmapDescriptor;
+      _destIcon = results[1] as gm.BitmapDescriptor;
+      _wayIcon = results[2] as gm.BitmapDescriptor;
+      _userIcon = results[3] as gm.BitmapDescriptor;
+      _vehicleIcon = results[4] as gm.BitmapDescriptor;
+    });
+    if (pts.length < 2) return;
+    final stripColor = ticket.vehicleClass?.color ?? AppColors.accent;
+    final polylines = await routePolylines(
+      id: 'track-route',
+      points: pts,
+      color: stripColor,
+    );
+    if (!mounted) return;
+    setState(() => _polylines = {...polylines});
+  }
+
+  void _fitCameraToRoute() {
+    final controller = _map;
+    if (controller == null) return;
+    final pts = _tracker?.path.points ?? const <LatLng>[];
+    if (pts.isEmpty) return;
+    controller.moveCamera(cameraForBounds(pts, padding: 120));
+  }
+
+  /// Builds the live map markers synchronously from preloaded icons: the
+  /// route stops, the animated bus and the passenger's dot.
+  Set<gm.Marker> _buildMarkers(List<LatLng> pts, LatLng? busPos) {
+    final markers = <gm.Marker>{};
+    for (var i = 0; i < pts.length; i++) {
+      final icon = i == 0
+          ? _originIcon
+          : i == pts.length - 1
+          ? _destIcon
+          : _wayIcon;
+      if (icon == null) continue;
+      markers.add(
+        gm.Marker(
+          markerId: gm.MarkerId('stop-$i'),
+          position: toGm(pts[i]),
+          icon: icon,
+          anchor: Offset(0.5, i == pts.length - 1 ? 0.95 : 0.5),
+          zIndexInt: 2,
+        ),
+      );
+    }
+    final vehicleIcon = _vehicleIcon;
+    if (busPos != null && vehicleIcon != null) {
+      markers.add(
+        gm.Marker(
+          markerId: const gm.MarkerId('bus'),
+          position: toGm(busPos),
+          icon: vehicleIcon,
+          rotation: _busBearing,
+          anchor: const Offset(0.5, 0.5),
+          zIndexInt: 20,
+        ),
+      );
+    }
+    final userIcon = _userIcon;
+    final userPos = PassengerLocationService.instance.currentPosition;
+    if (userPos != null && userIcon != null) {
+      markers.add(
+        gm.Marker(
+          markerId: const gm.MarkerId('me'),
+          position: toGm(userPos),
+          icon: userIcon,
+          anchor: const Offset(0.5, 0.5),
+          zIndexInt: 30,
+        ),
+      );
+    }
+    return markers;
   }
 
   Future<void> _refreshAndTick() async {
@@ -183,7 +293,7 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
     _move.dispose();
     PassengerLocationService.instance.stop();
     PassengerLocationService.instance.removeListener(_onLocationChanged);
-    _map.dispose();
+    _map?.dispose();
     super.dispose();
   }
 
@@ -210,7 +320,6 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
     final tracker = _tracker!;
     final path = tracker.path;
     final pts = path.points;
-    final stripColor = ticket.vehicleClass?.color ?? AppColors.accent;
     final now = DateTime.now();
     final eta = tracker.eta(now);
     final liveGps = ticket.driver?.livePosition(now);
@@ -234,6 +343,14 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
       appBar: AppBar(
         title: Text(L10n.t(context, 'liveTrack')),
         actions: [
+          if (_pickup != null &&
+              (_pickup!.latitude != 0 || _pickup!.longitude != 0))
+            IconButton(
+              icon: const Icon(Icons.navigation_outlined),
+              tooltip: L10n.t(context, 'navigate'),
+              onPressed: () =>
+                  launchNavigation(_pickup!.latitude, _pickup!.longitude),
+            ),
           IconButton(
             icon: const Icon(Icons.headset_mic_outlined),
             tooltip: L10n.t(context, 'contactSupport'),
@@ -246,68 +363,26 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
           // Map fills the screen; the info panel floats on top.
           if (pts.length >= 2)
             Positioned.fill(
-              child: FlutterMap(
-                mapController: _map,
-                options: MapOptions(
-                  onMapReady: () => setState(() => _mapReady = true),
-                  initialCameraFit: CameraFit.bounds(
-                    bounds: LatLngBounds.fromPoints(pts),
-                    padding: const EdgeInsets.fromLTRB(40, 120, 40, 280),
-                  ),
-                  interactionOptions: const InteractionOptions(
-                    flags:
-                        InteractiveFlag.drag |
-                        InteractiveFlag.pinchZoom |
-                        InteractiveFlag.flingAnimation,
-                  ),
+              child: gm.GoogleMap(
+                initialCameraPosition: gm.CameraPosition(
+                  target: toGm(pts.first),
+                  zoom: 12,
                 ),
-                children: [
-                  TileLayer(
-                    urlTemplate: tileUrlForTime(),
-                    subdomains: subdomainsForTime() ?? const [],
-                    userAgentPackageName: 'com.softcar.shuttle',
-                  ),
-                  RoadRoutePolyline(
-                    points: pts,
-                    color: stripColor,
-                    strokeWidth: 4,
-                  ),
-                  MarkerLayer(
-                    markers: [
-                      for (var i = 0; i < pts.length; i++)
-                        Marker(
-                          point: pts[i],
-                          width: 32,
-                          height: 32,
-                          child: Icon(
-                            i == 0
-                                ? Icons.trip_origin
-                                : i == pts.length - 1
-                                ? Icons.fmd_good_rounded
-                                : Icons.circle,
-                            size: i == 0 || i == pts.length - 1 ? 26 : 11,
-                            color:
-                                i == 0 || i == pts.length - 1
-                                    ? stripColor
-                                    : AppColors.textTertiary,
-                          ),
-                        ),
-                      if (busPos != null)
-                        vehicleSpriteMarker(
-                          point: busPos,
-                          seats: ticket.vehicleClass?.seats ?? 14,
-                          bearingDeg: _busBearing,
-                          width: 44,
-                        ),
-                      if (PassengerLocationService.instance.currentPosition !=
-                          null)
-                        UserLocationMarker(
-                          point:
-                              PassengerLocationService.instance.currentPosition!,
-                        ).toMarker(),
-                    ],
-                  ),
-                ],
+                onMapCreated: (c) {
+                  _map = c;
+                  setState(() => _mapReady = true);
+                  _fitCameraToRoute();
+                },
+                markers: _buildMarkers(pts, busPos),
+                polylines: _polylines,
+                style: googleMapStyle(),
+                zoomControlsEnabled: false,
+                compassEnabled: true,
+                mapToolbarEnabled: false,
+                myLocationButtonEnabled: false,
+                myLocationEnabled: false,
+                rotateGesturesEnabled: true,
+                tiltGesturesEnabled: true,
               ),
             ),
           // Info panel --------------------------------------------------------

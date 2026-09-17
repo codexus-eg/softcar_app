@@ -126,6 +126,8 @@ class _HomeTabState extends State<HomeTab> with WidgetsBindingObserver {
             SliverToBoxAdapter(child: _header(auth)),
             SliverToBoxAdapter(child: _AdsCarousel()),
             SliverToBoxAdapter(child: _searchEntry()),
+            SliverToBoxAdapter(child: _suggestEntry()),
+            SliverToBoxAdapter(child: _myRequestsEntry()),
             SliverToBoxAdapter(child: _TierGrid()),
             if (boardingNext != null)
               SliverToBoxAdapter(
@@ -385,6 +387,152 @@ class _HomeTabState extends State<HomeTab> with WidgetsBindingObserver {
     );
   }
 
+  // ---- suggest trip quick entry -------------------------------------------
+
+  Widget _suggestEntry() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 4, 20, 4),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(14),
+          onTap: () => Navigator.of(context).pushNamed('/suggest-trip'),
+          child: Ink(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [Color(0xFF2E7D32), Color(0xFF43A047)],
+                begin: Alignment.centerLeft,
+                end: Alignment.centerRight,
+              ),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  alignment: Alignment.center,
+                  child: const Icon(
+                    Icons.alt_route_rounded,
+                    color: Colors.white,
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        L10n.t(context, 'suggestTrip'),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      const SizedBox(height: 1),
+                      Text(
+                        L10n.t(context, 'suggestTripSub'),
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.85),
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const Icon(
+                  Icons.chevron_right_rounded,
+                  color: Colors.white,
+                  size: 20,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ---- my requests quick entry -------------------------------------------
+
+  Widget _myRequestsEntry() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 4, 20, 4),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(14),
+          onTap: () => Navigator.of(context).pushNamed('/my-requests'),
+          child: Ink(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+            decoration: BoxDecoration(
+              color: Theme.of(context).brightness == Brightness.dark
+                  ? AppColors.surfaceDarkElevated
+                  : Colors.white,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: AppColors.divider),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 34,
+                  height: 34,
+                  decoration: BoxDecoration(
+                    color: AppColors.accent.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  alignment: Alignment.center,
+                  child: const Icon(
+                    Icons.hourglass_top_rounded,
+                    color: AppColors.accent,
+                    size: 19,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        L10n.t(context, 'myRequestsTitle'),
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      const SizedBox(height: 1),
+                      Text(
+                        L10n.t(context, 'myRequestsSub'),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const Icon(
+                  Icons.chevron_right_rounded,
+                  color: AppColors.textTertiary,
+                  size: 20,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   // ---- day strip + fleet --------------------------------------------------
 
   /// 30 consecutive Egypt-local days starting today. Adding to the day
@@ -429,45 +577,67 @@ class _HomeTabState extends State<HomeTab> with WidgetsBindingObserver {
     return eg != null && _sameDay(eg, day);
   }
 
+  /// Real fleet services straight from the admin's fleet-service catalogue,
+  /// each shown alone (all chips scroll horizontally) so the passenger sees
+  /// every SoftCar service the administrator has created — including any just
+  /// added, which appear automatically on the next refresh. Tapping a service
+  /// opens search pre-filtered to it; tapping it again clears the filter.
   Widget _fleetIndicator() {
     final shuttle = context.watch<ShuttleService>();
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 4, 20, 4),
-      child: SizedBox(
-        height: 36,
-        child: Row(
-          children: [
+    final services = shuttle.fleetServices.isEmpty
+        ? ShuttleClass.values
+            .map(
+              (cls) => FleetService(
+                id: cls.name,
+                code: cls.apiCode,
+                name: cls.name,
+                description: '',
+                seatCapacity: cls.seats,
+                passengerTripPrice: -1,
+                isActive: true,
+                sortOrder: cls.index,
+              ),
+            )
+            .toList()
+        : shuttle.fleetServices;
+    return SizedBox(
+      height: 42,
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 3),
+        children: [
+          _fleetChip(
+            label: L10n.t(context, 'allTrips'),
+            icon: Icons.apps_rounded,
+            color: AppColors.accent,
+            selected: shuttle.fleetFilter == null,
+            onTap: () => _openFiltered(null),
+          ),
+          const SizedBox(width: 8),
+          for (final s in services) ...[
             _fleetChip(
-              label: L10n.t(context, 'luxury3'),
-              icon: ShuttleClass.luxury.icon,
-              color: ShuttleClass.luxury.color,
-              selected: shuttle.fleetFilter == ShuttleClass.luxury,
-              onTap: () => _openFiltered(ShuttleClass.luxury),
+              label: s.displayName,
+              icon: s.icon,
+              color: s.color,
+              selected: shuttle.fleetFilter?.code == s.code,
+              onTap: () => _openFiltered(s),
             ),
             const SizedBox(width: 8),
-            _fleetChip(
-              label: L10n.t(context, 'standard14to28'),
-              icon: Icons.airport_shuttle_rounded,
-              color: AppColors.accent,
-              selected:
-                  shuttle.fleetFilter != null &&
-                  shuttle.fleetFilter != ShuttleClass.luxury,
-              onTap: () => _openFiltered(ShuttleService.standardFleet),
-            ),
           ],
-        ),
+        ],
       ),
     );
   }
 
   /// Toggles the fleet filter (tapping the active chip clears it back to All)
-  /// and opens search pre-filtered.
-  void _openFiltered(ShuttleClass filter) {
+  /// and opens "Where to?" pre-filtered to that class.
+  void _openFiltered(FleetService? filter) {
     Haptics.selection();
     final shuttle = context.read<ShuttleService>();
     final current = shuttle.fleetFilter;
-    shuttle.setFleetFilter(current == filter ? null : filter);
-    Navigator.of(context).pushNamed('/search');
+    final next = current?.code == filter?.code ? null : filter;
+    shuttle.setFleetFilter(next);
+    Navigator.of(context).pushNamed('/whereto', arguments: next);
   }
 
   Widget _fleetChip({
@@ -477,37 +647,33 @@ class _HomeTabState extends State<HomeTab> with WidgetsBindingObserver {
     required bool selected,
     required VoidCallback onTap,
   }) {
-    return Expanded(
-      child: GestureDetector(
-        onTap: onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 180),
-          curve: Curves.easeOutCubic,
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-          decoration: BoxDecoration(
-            color: selected ? color : color.withValues(alpha: 0.12),
-            borderRadius: BorderRadius.circular(99),
-            border: Border.all(color: color.withValues(alpha: 0.6)),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(icon, size: 14, color: selected ? Colors.white : color),
-              const SizedBox(width: 6),
-              Flexible(
-                child: Text(
-                  label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w800,
-                    color: selected ? Colors.white : color,
-                  ),
-                ),
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        curve: Curves.easeOutCubic,
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: selected ? color : color.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(99),
+          border: Border.all(color: color.withValues(alpha: 0.6)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 14, color: selected ? Colors.white : color),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
+                color: selected ? Colors.white : color,
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
@@ -1269,7 +1435,7 @@ class _BoardingNextCard extends StatelessWidget {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        egFormat(ticket.departure, 'EEE, HH:mm'),
+                        egFormat(ticket.departure, 'EEE, h:mm a'),
                         style: Theme.of(context).textTheme.bodySmall,
                       ),
                     ],
@@ -1464,7 +1630,6 @@ class _TripCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final time = egFormat(trip.startTime, 'HH:mm');
     final free = trip.seatsRemaining;
     final vehicleColor = trip.vehicle?.color ?? AppColors.accent;
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -1473,6 +1638,19 @@ class _TripCard extends StatelessWidget {
             ? 1.0
             : (trip.totalSeats - free).clamp(0, trip.totalSeats) /
                 trip.totalSeats;
+    final tripTypeBadge = switch (trip.tripType) {
+      TripType.recurring => (
+        L10n.t(context, 'recurring'),
+        Icons.repeat_rounded,
+        vehicleColor,
+      ),
+      TripType.roundTrip => (
+        L10n.t(context, 'roundTrip'),
+        Icons.swap_horiz_rounded,
+        AppColors.info,
+      ),
+      _ => (null, null, null),
+    };
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 6, 20, 6),
@@ -1489,30 +1667,7 @@ class _TripCard extends StatelessWidget {
               children: [
                 DateBadge(date: trip.startTime, height: 52),
                 const SizedBox(width: 10),
-                Container(
-                  width: 52,
-                  height: 52,
-                  decoration: BoxDecoration(
-                    color: vehicleColor,
-                    borderRadius: BorderRadius.circular(14),
-                    boxShadow: [
-                      BoxShadow(
-                        color: vehicleColor.withValues(alpha: 0.3),
-                        blurRadius: 10,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  alignment: Alignment.center,
-                  child: Text(
-                    time,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w800,
-                      fontSize: 14,
-                    ),
-                  ),
-                ),
+                TimeBadge(date: trip.startTime, background: vehicleColor),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(
@@ -1525,31 +1680,17 @@ class _TripCard extends StatelessWidget {
                         style: Theme.of(context).textTheme.titleMedium,
                       ),
                       const SizedBox(height: 2),
-                      Row(
-                        children: [
-                          Container(
-                            width: 7,
-                            height: 7,
-                            decoration: BoxDecoration(
-                              color: vehicleColor,
-                              shape: BoxShape.circle,
-                            ),
-                          ),
-                          const SizedBox(width: 5),
-                          Expanded(
-                            child: Text(
-                              '${trip.vehicle?.name ?? L10n.t(context, 'shuttle')} · ${egFormat(trip.startTime, 'EEE')}',
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: Theme.of(context).textTheme.bodySmall
-                                  ?.copyWith(color: AppColors.textSecondary),
-                            ),
-                          ),
-                        ],
+                      Text(
+                        trip.vehicle?.name ?? L10n.t(context, 'shuttle'),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.bodySmall
+                            ?.copyWith(color: AppColors.textSecondary),
                       ),
                     ],
                   ),
                 ),
+                const SizedBox(width: 8),
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
@@ -1560,29 +1701,13 @@ class _TripCard extends StatelessWidget {
                         fontWeight: FontWeight.w900,
                       ),
                     ),
-                    const SizedBox(height: 3),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 3,
-                      ),
-                      decoration: BoxDecoration(
-                        color:
-                            free > 0
-                                ? AppColors.success.withValues(alpha: 0.12)
-                                : AppColors.error.withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(99),
-                      ),
-                      child: Text(
-                        free > 0
-                            ? '$free ${L10n.t(context, 'seatsFree')}'
-                            : L10n.t(context, 'full'),
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: free > 0 ? AppColors.success : AppColors.error,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
+                    Text(
+                      L10n.t(context, 'perSeat'),
+                      style: Theme.of(context).textTheme.bodySmall
+                          ?.copyWith(
+                            color: AppColors.textTertiary,
+                            fontSize: 10.5,
+                          ),
                     ),
                   ],
                 ),
@@ -1591,6 +1716,99 @@ class _TripCard extends StatelessWidget {
             const SizedBox(height: 12),
             _RouteSummary(from: trip.fromName, to: trip.toName),
             const SizedBox(height: 10),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 3,
+                  ),
+                  decoration: BoxDecoration(
+                    color:
+                        free > 0
+                            ? AppColors.success.withValues(alpha: 0.12)
+                            : AppColors.error.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(99),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.event_seat_outlined,
+                        size: 12,
+                        color: free > 0 ? AppColors.success : AppColors.error,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        free > 0
+                            ? '$free/${trip.totalSeats} ${L10n.t(context, 'seatsFree')}'
+                            : L10n.t(context, 'full'),
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: free > 0 ? AppColors.success : AppColors.error,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 3,
+                  ),
+                  decoration: BoxDecoration(
+                    color: vehicleColor.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(99),
+                  ),
+                  child: Text(
+                    '${(occupancy.clamp(0.0, 1.0) * 100).round()}% ${L10n.t(context, 'occupied')}',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w800,
+                      color: vehicleColor,
+                    ),
+                  ),
+                ),
+                if (tripTypeBadge.$1 != null)
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 3,
+                    ),
+                    decoration: BoxDecoration(
+                      color: tripTypeBadge.$3!.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(99),
+                      border: Border.all(
+                        color: tripTypeBadge.$3!.withValues(alpha: 0.45),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          tripTypeBadge.$2,
+                          size: 11,
+                          color: tripTypeBadge.$3,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          tripTypeBadge.$1!,
+                          style: TextStyle(
+                            fontSize: 10.5,
+                            fontWeight: FontWeight.w800,
+                            color: tripTypeBadge.$3,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 8),
             ClipRRect(
               borderRadius: BorderRadius.circular(99),
               child: LinearProgressIndicator(

@@ -64,5 +64,7 @@
         </array>
         <key>UIViewControllerBasedStatusBarAppearance</key>
         <false/>
+            <key>com.google.android.geo.API_KEY</key>
+        <string>AIzaSyAkeDSvPJwkDqoy9yqzoZw6TgsaaW_BC2E</string>
     </dict>
 </plist>

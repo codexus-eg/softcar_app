@@ -123,7 +123,7 @@ class _TicketRow extends StatelessWidget {
                                 style: Theme.of(context).textTheme.bodyMedium),
                             const SizedBox(height: 2),
                             Text(
-                              egFormat(ticket.departure, 'EEE, MMM d · HH:mm'),
+                              egFormat(ticket.departure, 'EEE, MMM d · h:mm a'),
                               style: Theme.of(context).textTheme.bodySmall,
                             ),
                           ],

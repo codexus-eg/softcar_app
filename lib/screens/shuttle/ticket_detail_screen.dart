@@ -30,10 +30,10 @@ class TicketDetailScreen extends StatelessWidget {
   static String dropoffArrival(Ticket ticket) {
     for (final stop in ticket.pickupPoints.reversed) {
       if (stop.isDropoff) {
-        return egFormat(stop.arrivalAt(ticket.departure), 'HH:mm');
+        return egFormat(stop.arrivalAt(ticket.departure), 'h:mm a');
       }
     }
-    return egFormat(ticket.liveEndTime, 'HH:mm');
+    return egFormat(ticket.liveEndTime, 'h:mm a');
   }
 
   @override
@@ -185,6 +185,18 @@ class TicketDetailScreen extends StatelessWidget {
       ).pushNamed('/change-trip-day', arguments: ticket);
     }
 
+    void openChangePoints() {
+      showModalBottomSheet<void>(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        builder: (_) => _ChangePointsSheet(ticket: ticket),
+      );
+    }
+
     if (ticket.isUpcoming) {
       final body = Column(
         mainAxisSize: MainAxisSize.min,
@@ -198,6 +210,33 @@ class TicketDetailScreen extends StatelessWidget {
             ).pushNamed('/live-tracking', arguments: ticket),
           ),
           if (ticket.isReserved) ...[
+            if (ticket.pickupPoints.length >= 2) ...[
+              const SizedBox(height: 8),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: openChangePoints,
+                  icon: const Icon(Icons.swap_horiz_rounded, size: 18),
+                  label: Text(
+                    L10n.t(context, 'changePoints'),
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.accent,
+                    side: BorderSide(
+                      color: AppColors.accent.withValues(alpha: 0.45),
+                    ),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                ),
+              ),
+            ],
             const SizedBox(height: 8),
             Row(
               children: [
@@ -344,7 +383,7 @@ class _HeaderStrip extends StatelessWidget {
             children: [
               _TimeBlock(
                 label: L10n.t(context, 'departure'),
-                value: egFormat(ticket.departure, 'HH:mm'),
+                value: egFormat(ticket.departure, 'h:mm a'),
                 date: egFormat(ticket.departure, 'EEE, MMM d'),
               ),
               Expanded(
@@ -616,7 +655,7 @@ class _TripCard extends StatelessWidget {
             const Divider(height: 16),
             _TripRow(
               label: L10n.t(context, 'serviceDate'),
-              value: egFormat(ticket.serviceDate!, 'EEE, MMM d · HH:mm'),
+              value: egFormat(ticket.serviceDate!, 'EEE, MMM d · h:mm a'),
             ),
           ],
           const Divider(height: 16),
@@ -624,7 +663,7 @@ class _TripCard extends StatelessWidget {
           const Divider(height: 16),
           _TripRow(
             label: L10n.t(context, 'date'),
-            value: egFormat(ticket.departure, 'EEE, MMM d · HH:mm'),
+            value: egFormat(ticket.departure, 'EEE, MMM d · h:mm a'),
           ),
           const Divider(height: 16),
           _TripRow(
@@ -1043,4 +1082,283 @@ String paymentStatusLabel(BuildContext context, String raw) {
   final key = map[raw];
   if (key != null) return L10n.t(context, key);
   return raw.split('_').map((w) => w.toLowerCase()).join(' ');
+}
+
+/// Bottom sheet for changing a reserved ticket's pickup/dropoff stops on
+/// `GET /api/mobile/reservations` data. Stops are shown in route order and the
+/// "pickup before dropoff" rule is enforced: the pickup dropdown only lists
+/// stops before the chosen dropoff, and vice-versa.
+class _ChangePointsSheet extends StatefulWidget {
+  const _ChangePointsSheet({required this.ticket});
+
+  final Ticket ticket;
+
+  @override
+  State<_ChangePointsSheet> createState() => _ChangePointsSheetState();
+}
+
+class _ChangePointsSheetState extends State<_ChangePointsSheet> {
+  String? _pickupId;
+  String? _dropoffId;
+  bool _saving = false;
+
+  Ticket get ticket => widget.ticket;
+
+  @override
+  void initState() {
+    super.initState();
+    final stops = _orderedStops;
+    final currentPickup = ticket.pickupPointId;
+    final currentDropoff = ticket.dropoffPointId;
+    _pickupId =
+        currentPickup.isNotEmpty && _validId(currentPickup)
+            ? currentPickup
+            : (stops.isNotEmpty ? stops.first.id : null);
+    _dropoffId =
+        currentDropoff.isNotEmpty && _validId(currentDropoff)
+            ? currentDropoff
+            : (stops.isNotEmpty ? stops.last.id : null);
+  }
+
+  /// All of the trip's stops, in route/stop-order.
+  List<ShuttleStop> get _orderedStops => ticket.pickupPoints;
+
+  bool _validId(String id) {
+    if (id.isEmpty) return false;
+    return _orderedStops.any((s) => s.id == id);
+  }
+
+  ShuttleStop? _stopById(String? id) {
+    for (final s in _orderedStops) {
+      if (s.id == id) return s;
+    }
+    return null;
+  }
+
+  /// Pickup options: every stop ranked before the chosen dropoff.
+  List<ShuttleStop> get _pickupOptions {
+    final dropoff = _stopById(_dropoffId);
+    final limit = dropoff?.stopOrder ?? 0x3fffffff;
+    return _orderedStops.where((s) => s.stopOrder < limit).toList();
+  }
+
+  /// Dropoff options: every stop ranked after the chosen pickup.
+  List<ShuttleStop> get _dropoffOptions {
+    final pickup = _stopById(_pickupId);
+    final base = pickup?.stopOrder ?? -1;
+    return _orderedStops.where((s) => s.stopOrder > base).toList();
+  }
+
+  bool get _hasChanges {
+    final pickupId = _stopById(_pickupId)?.id;
+    final dropoffId = _stopById(_dropoffId)?.id;
+    if (pickupId == null || dropoffId == null) return false;
+    return pickupId != ticket.pickupPointId || dropoffId != ticket.dropoffPointId;
+  }
+
+  void _onPickupChanged(String? id) {
+    setState(() {
+      _pickupId = id;
+      if (_pickupId != null) {
+        final dropoff = _stopById(_dropoffId);
+        final pickup = _stopById(_pickupId);
+        if (dropoff != null &&
+            pickup != null &&
+            pickup.stopOrder >= dropoff.stopOrder) {
+          final next =
+              _orderedStops
+                  .where((s) => s.stopOrder > pickup.stopOrder)
+                  .toList();
+          _dropoffId = next.isNotEmpty ? next.first.id : null;
+        }
+      }
+    });
+  }
+
+  void _onDropoffChanged(String? id) {
+    setState(() {
+      _dropoffId = id;
+      if (_dropoffId != null) {
+        final dropoff = _stopById(_dropoffId);
+        final pickup = _stopById(_pickupId);
+        if (dropoff != null &&
+            pickup != null &&
+            pickup.stopOrder >= dropoff.stopOrder) {
+          final prev =
+              _orderedStops
+                  .where((s) => s.stopOrder < dropoff.stopOrder)
+                  .toList();
+          _pickupId = prev.isNotEmpty ? prev.last.id : null;
+        }
+      }
+    });
+  }
+
+  Future<void> _save() async {
+    final pickupId = _stopById(_pickupId)?.id;
+    final dropoffId = _stopById(_dropoffId)?.id;
+    if (pickupId == null || dropoffId == null) return;
+    if (!_hasChanges) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(L10n.t(context, 'pointsUnchanged'))),
+      );
+      return;
+    }
+    setState(() => _saving = true);
+    final reservations = context.read<ReservationService>();
+    final err = await reservations.updatePoints(
+      ticket.id,
+      pickupPointId: pickupId,
+      dropoffPointId: dropoffId,
+    );
+    if (!mounted) return;
+    if (err != null) {
+      setState(() => _saving = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            L10n.t(
+              context,
+              'pointsUpdateFailed',
+            ).replaceFirst('{error}', err),
+          ),
+        ),
+      );
+      return;
+    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(L10n.t(context, 'pointsUpdated'))),
+    );
+    Navigator.of(context).pop();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final pickupOptions = _pickupOptions;
+    final dropoffOptions = _dropoffOptions;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final hintColor = isDark ? Colors.white38 : AppColors.textSecondary;
+
+    return SafeArea(
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(
+          20,
+          16,
+          20,
+          16 + MediaQuery.of(context).viewInsets.bottom,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              L10n.t(context, 'changePointsTitle'),
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              L10n.t(context, 'changePointsSub'),
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: AppColors.textSecondary,
+              ),
+            ),
+            const SizedBox(height: 18),
+            DropdownButtonFormField<String>(
+              key: const Key('pickup_dropdown'),
+              initialValue: _pickupId,
+              decoration: InputDecoration(
+                labelText: L10n.t(context, 'pickupStop'),
+                prefixIcon: const Icon(Icons.radio_button_checked_rounded),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+              ),
+              items: [
+                for (final stop in pickupOptions)
+                  DropdownMenuItem<String>(
+                    value: stop.id,
+                    child: Text(
+                      stop.name,
+                      style: TextStyle(
+                        color: stop.id == _pickupId
+                            ? AppColors.accent
+                            : hintColor,
+                        fontWeight:
+                            stop.id == _pickupId ? FontWeight.w800 : null,
+                      ),
+                    ),
+                  ),
+              ],
+              onChanged: _saving ? null : _onPickupChanged,
+            ),
+            const SizedBox(height: 12),
+            DropdownButtonFormField<String>(
+              key: const Key('dropoff_dropdown'),
+              initialValue: _dropoffId,
+              decoration: InputDecoration(
+                labelText: L10n.t(context, 'dropoffStop'),
+                prefixIcon: const Icon(Icons.flag_outlined),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+              ),
+              items: [
+                for (final stop in dropoffOptions)
+                  DropdownMenuItem<String>(
+                    value: stop.id,
+                    child: Text(
+                      stop.name,
+                      style: TextStyle(
+                        color: stop.id == _dropoffId
+                            ? AppColors.accent
+                            : hintColor,
+                        fontWeight:
+                            stop.id == _dropoffId ? FontWeight.w800 : null,
+                      ),
+                    ),
+                  ),
+              ],
+              onChanged: _saving ? null : _onDropoffChanged,
+            ),
+            const SizedBox(height: 14),
+            Text(
+              L10n.t(context, 'pointsOrderHint'),
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: AppColors.textSecondary,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: _saving
+                        ? null
+                        : () => Navigator.of(context).pop(),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                    ),
+                    child: Text(L10n.t(context, 'keepTicket')),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: PrimaryButton(
+                    label: _saving
+                        ? L10n.t(context, 'saving')
+                        : L10n.t(context, 'confirmChange'),
+                    icon: Icons.check_rounded,
+                    onPressed: _saving ? null : _save,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }

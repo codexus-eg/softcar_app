@@ -1,14 +1,13 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_map/flutter_map.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart' as gm;
 import 'package:intl/intl.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/l10n/l10n.dart';
 import '../../core/theme/app_colors.dart';
-import '../../core/utils/egypt_map_style.dart';
 import '../../core/utils/haptics.dart';
 import '../../core/utils/formatters.dart';
 import '../../core/utils/egypt_time.dart';
@@ -24,8 +23,10 @@ import '../../services/voucher_service.dart';
 import '../../widgets/call_chooser_sheet.dart';
 import '../../services/wallet_service.dart';
 import '../../widgets/common_widgets.dart';
+import '../../widgets/fullscreen_map_screen.dart';
+import '../../widgets/google_map_kit.dart';
+import '../../widgets/map_markers.dart';
 import '../../widgets/primary_button.dart';
-import '../../widgets/road_route_layer.dart';
 import '../../widgets/user_location_marker.dart';
 import '../payment/payment_webview_screen.dart';
 
@@ -51,6 +52,8 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
   String? _returnDropoffId;
   DateTime? _startDate;
   DateTime? _endDate;
+  bool _recurring = true;
+  DateTime? _singleDay;
   final Set<int> _weekdays = {};
   final Set<int> _selected = {};
   Set<int> _taken = {};
@@ -113,6 +116,8 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
                 : trip.startTime.add(const Duration(days: 30));
         _startDate = trip.startTime;
         _endDate = preferred;
+        _recurring = trip.tripType.isRecurring;
+        _singleDay = trip.startTime;
         if (trip.reservedSeats.isNotEmpty) {
           _taken = trip.reservedSeats.keys.toSet();
           _reservedGender = Map.of(trip.reservedSeats);
@@ -151,7 +156,10 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
   Set<int> _occupiedFor(ShuttleTrip trip) {
     final takenCount = trip.totalSeats - trip.seatsRemaining;
     if (takenCount <= 0) return const {};
-    final layout = trip.vehicle?.layout ?? const <SeatRow>[];
+    final layout =
+        trip.effectiveLayout ??
+        trip.vehicle?.layout ??
+        _fallbackLayout(trip.totalSeats);
     final all = layout.expand((r) => r.all).toList();
     if (all.isEmpty) return const {};
     // A stable pseudo-random pick so the same trip always shows the same
@@ -420,9 +428,16 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
     final trip = _trip;
     if (trip == null || _selected.isEmpty) return;
 
-    // Recurring plan: seat chosen once, schedule picked separately.
-    if (trip.tripType.isRecurring) {
-      await _confirmRecurring();
+    // Recurring plan: seat chosen once, schedule picked separately. The
+    // Single/Recurring toggle decides between a full recurring plan (date
+    // range + weekdays + tier) and a single-day reservation of the same
+    // recurring trip. Round trips default to the single-day pair booking and
+    // offer the recurring mode as an option.
+    final useRecurring =
+        trip.tripType.isRecurring || (trip.tripType.isRoundTrip && _recurring);
+    final singleDayOnly = trip.tripType.isRecurring && !_recurring;
+    if (useRecurring || singleDayOnly) {
+      await _confirmRecurring(singleDay: singleDayOnly);
       return;
     }
 
@@ -601,10 +616,10 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
     }
   }
 
-  Future<void> _confirmRecurring() async {
+  Future<void> _confirmRecurring({bool singleDay = false}) async {
     final trip = _trip;
-    final start = _startDate;
-    final end = _endDate;
+    final start = singleDay ? _singleDay : _startDate;
+    final end = singleDay ? _singleDay : _endDate;
     if (trip == null || _selected.isEmpty) return;
     if (start == null || end == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -612,13 +627,16 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
       );
       return;
     }
-    if (!end.isAfter(start)) {
+    if (!singleDay && !end.isAfter(start)) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(L10n.t(context, 'invalidDateRange'))),
       );
       return;
     }
-    if (_weekdays.isEmpty) {
+    final weekdays = singleDay
+        ? <int>[start.weekday]
+        : (_weekdays.toList()..sort());
+    if (!singleDay && _weekdays.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(L10n.t(context, 'noWeekdaySelected'))),
       );
@@ -659,9 +677,9 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
         seatNumbers: seatNumbers,
         startDate: start,
         endDate: end,
-        weekdays: _weekdays.toList()..sort(),
+        weekdays: weekdays,
         paymentMethod: _paymentMethod,
-        tier: _tier,
+        tier: singleDay ? null : _tier,
         returnTrip: trip.returnTrip,
         returnPickupPointId: _returnPickupId,
         returnDropoffPointId: _returnDropoffId,
@@ -684,8 +702,10 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            '${L10n.t(context, 'recurringCreated')} · '
-            '$created ${L10n.t(context, 'departures')}',
+            singleDay
+                ? L10n.t(context, 'singleBookingSuccess')
+                : '${L10n.t(context, 'recurringCreated')} · '
+                      '$created ${L10n.t(context, 'departures')}',
           ),
         ),
       );
@@ -715,7 +735,10 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
     final auth = context.watch<AuthService>();
     final gender = auth.profile.gender;
     final seatColor = GenderColor.forGender(gender);
-    final layout = trip.vehicle?.layout ?? _fallbackLayout(trip.totalSeats);
+    final layout =
+        trip.effectiveLayout ??
+        trip.vehicle?.layout ??
+        _fallbackLayout(trip.totalSeats);
     final ownSeats = _ownSeats();
     final reservedFallback =
         gender == UserGender.male
@@ -723,6 +746,11 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
             : gender == UserGender.female
             ? const Color(0xFF9D174D)
             : AppColors.inkSoft;
+    final recurringMode =
+        trip.tripType.isRecurring || (trip.tripType.isRoundTrip && _recurring);
+    final singleDayOnly = trip.tripType.isRecurring && !_recurring;
+    final canToggleMode =
+        trip.tripType.isRecurring || trip.tripType.isRoundTrip;
 
     return Scaffold(
       appBar: AppBar(
@@ -735,8 +763,8 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
             label:
                 _selected.isEmpty
                     ? L10n.t(context, 'selectSeats')
-                    : trip.tripType.isRecurring
-                    ? '${L10n.t(context, 'bookRecurring')} ${_selected.length} '
+                    : (recurringMode || singleDayOnly)
+                    ? '${L10n.t(context, singleDayOnly ? 'bookSingleDay' : 'bookRecurring')} ${_selected.length} '
                         '${_selected.length == 1 ? L10n.t(context, 'seatAbbr') : L10n.t(context, 'seatsAbbr')}'
                     : '${L10n.t(context, 'book')} ${_selected.length} '
                         '${_selected.length == 1 ? L10n.t(context, 'seatAbbr') : L10n.t(context, 'seatsAbbr')} · '
@@ -858,36 +886,52 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
             onTap: _toggleSeat,
           ),
           const SizedBox(height: 18),
-          if (trip.tripType.isRecurring) ...[
-            _RecurringCard(
-              startDate: _startDate,
-              endDate: _endDate,
-              weekdays: _weekdays,
-              tier: _tier,
-              onStartDate: (d) => setState(() => _startDate = d),
-              onEndDate: (d) => setState(() => _endDate = d),
-              onToggleWeekday:
-                  (d) => setState(() {
-                    if (_weekdays.contains(d)) {
-                      _weekdays.remove(d);
-                    } else {
-                      _weekdays.add(d);
-                    }
-                  }),
-              onTier:
-                  (t) => setState(() {
-                    _tier = t;
-                    _discount = 0;
-                    final tierMax = t?.maximumSeats ?? 0;
-                    final cap = tierMax > 0 ? tierMax : 2;
-                    if (_selected.length > cap) {
-                      final sorted = _selected.toList()..sort();
-                      _selected
-                        ..clear()
-                        ..addAll(sorted.take(cap));
-                    }
-                  }),
+          if (canToggleMode) ...[
+            _ModeToggle(
+              single: !_recurring,
+              onChanged: (v) {
+                Haptics.selection();
+                setState(() => _recurring = v);
+              },
             ),
+            const SizedBox(height: 12),
+          ],
+          if (trip.tripType.isRecurring) ...[
+            if (_recurring)
+              _RecurringCard(
+                startDate: _startDate,
+                endDate: _endDate,
+                weekdays: _weekdays,
+                tier: _tier,
+                onStartDate: (d) => setState(() => _startDate = d),
+                onEndDate: (d) => setState(() => _endDate = d),
+                onToggleWeekday:
+                    (d) => setState(() {
+                      if (_weekdays.contains(d)) {
+                        _weekdays.remove(d);
+                      } else {
+                        _weekdays.add(d);
+                      }
+                    }),
+                onTier:
+                    (t) => setState(() {
+                      _tier = t;
+                      _discount = 0;
+                      final tierMax = t?.maximumSeats ?? 0;
+                      final cap = tierMax > 0 ? tierMax : 2;
+                      if (_selected.length > cap) {
+                        final sorted = _selected.toList()..sort();
+                        _selected
+                          ..clear()
+                          ..addAll(sorted.take(cap));
+                      }
+                    }),
+              )
+            else
+              _SingleDayCard(
+                day: _singleDay,
+                onDay: (d) => setState(() => _singleDay = d),
+              ),
             const SizedBox(height: 18),
           ],
           if (trip.tripType.isRoundTrip && trip.returnTrip != null) ...[
@@ -1026,8 +1070,10 @@ class _RouteMap extends StatefulWidget {
 }
 
 class _RouteMapState extends State<_RouteMap> {
-  final MapController _map = MapController();
+  gm.GoogleMapController? _controller;
   bool _locating = false;
+  Set<gm.Marker> _markers = {};
+  Set<gm.Polyline> _polylines = {};
 
   /// Builds the list of geographic points from the stops that actually
   /// carry coordinates, so a stop with default (0,0) is never drawn.
@@ -1041,21 +1087,73 @@ class _RouteMapState extends State<_RouteMap> {
     return pts;
   }
 
+  /// First stop's display name (trip origin), for the fullscreen map header.
+  String _originName() {
+    for (final s in widget.trip.pickupPoints) {
+      if ((s.latitude != 0 || s.longitude != 0)) return s.name;
+    }
+    return L10n.t(context, 'origin');
+  }
+
+  /// Last stop's display name (trip destination), for the fullscreen header.
+  String _destinationName() {
+    for (final s in widget.trip.pickupPoints.reversed) {
+      if ((s.latitude != 0 || s.longitude != 0)) return s.name;
+    }
+    return L10n.t(context, 'destination');
+  }
+
   @override
   void initState() {
     super.initState();
     PassengerLocationService.instance.addListener(_onLocationChanged);
+    _rebuild();
   }
 
   void _onLocationChanged() {
-    if (mounted) setState(() {});
+    if (!mounted) return;
+    setState(() {});
+    _rebuild();
   }
 
-  @override
-  void dispose() {
-    PassengerLocationService.instance.removeListener(_onLocationChanged);
-    _map.dispose();
-    super.dispose();
+  Future<void> _rebuild() async {
+    final pts = _points;
+    if (pts.length < 2) return;
+    final accent = AppColors.accent;
+    final markers = <gm.Marker>{};
+    for (var i = 0; i < pts.length; i++) {
+      markers.add(
+        await stopMarker(i, pts[i], total: pts.length, accent: accent),
+      );
+    }
+    final pos = PassengerLocationService.instance.currentPosition;
+    if (pos != null) markers.add(await userDotMarker(pos));
+    final polylines = await routePolylines(
+      id: 'seat-route',
+      points: pts,
+      color: AppColors.mapRoute,
+    );
+    if (!mounted) return;
+    setState(() {
+      _markers = markers;
+      _polylines = {...polylines};
+    });
+    _fit();
+  }
+
+  Future<void> _fit() async {
+    final controller = _controller;
+    if (controller == null) return;
+    final pts = _points;
+    if (pts.isEmpty) return;
+    final pos = PassengerLocationService.instance.currentPosition;
+    await controller.moveCamera(
+      cameraForBounds(
+        pts,
+        extra: pos == null ? null : [pos],
+        padding: 36,
+      ),
+    );
   }
 
   /// Static preview: no position stream, just a one-shot fix that recenters
@@ -1067,10 +1165,21 @@ class _RouteMapState extends State<_RouteMap> {
       final pos = await location.getSingleFix();
       if (!mounted) return;
       if (pos == null) return;
-      _map.move(pos, 16);
+      await _controller?.moveCamera(
+        gm.CameraUpdate.newCameraPosition(
+          gm.CameraPosition(target: toGm(pos), zoom: 16),
+        ),
+      );
     } finally {
       if (mounted) setState(() => _locating = false);
     }
+  }
+
+  @override
+  void dispose() {
+    PassengerLocationService.instance.removeListener(_onLocationChanged);
+    _controller?.dispose();
+    super.dispose();
   }
 
   @override
@@ -1084,60 +1193,38 @@ class _RouteMapState extends State<_RouteMap> {
       child: ClipRRect(
         borderRadius: BorderRadius.circular(20),
         child: SizedBox(
-          height: 150,
+          height: 170,
           child: Stack(
             children: [
               Positioned.fill(
-                child: FlutterMap(
-                  mapController: _map,
-                  options: MapOptions(
-                    initialCameraFit: CameraFit.bounds(
-                      bounds: LatLngBounds.fromPoints(pts),
-                      padding: const EdgeInsets.all(28),
-                    ),
-                    interactionOptions: const InteractionOptions(
-                      flags: InteractiveFlag.drag | InteractiveFlag.pinchZoom,
-                    ),
+                child: gm.GoogleMap(
+                  initialCameraPosition: gm.CameraPosition(
+                    target: toGm(pts.first),
+                    zoom: 12,
                   ),
-                  children: [
-                    TileLayer(
-                      urlTemplate: tileUrlForTime(),
-                      subdomains: subdomainsForTime() ?? const [],
-                      userAgentPackageName: 'com.softcar.shuttle',
-                    ),
-                    RoadRoutePolyline(
-                      points: pts,
-                      color: AppColors.mapRoute,
-                      strokeWidth: 4,
-                    ),
-                    MarkerLayer(
-                      markers: [
-                        for (var i = 0; i < pts.length; i++)
-                          Marker(
-                            point: pts[i],
-                            width: 34,
-                            height: 34,
-                            child: Icon(
-                              i == 0
-                                  ? Icons.trip_origin
-                                  : i == pts.length - 1
-                                  ? Icons.fmd_good_rounded
-                                  : Icons.circle,
-                              size: i == 0 || i == pts.length - 1 ? 24 : 12,
-                              color: AppColors.accent,
-                            ),
-                          ),
-                        if (PassengerLocationService.instance.currentPosition !=
-                            null)
-                          UserLocationMarker(
-                            point: PassengerLocationService
-                                .instance.currentPosition!,
-                            size: 24,
-                          ).toMarker(),
-                      ],
-                    ),
-                  ],
+                  onMapCreated: (c) {
+                    _controller = c;
+                    _fit();
+                  },
+                  onTap: (_) => _openFullscreen(),
+                  markers: _markers,
+                  polylines: _polylines,
+                  style: googleMapStyle(),
+                  zoomControlsEnabled: true,
+                  compassEnabled: true,
+                  mapToolbarEnabled: true,
+                  myLocationButtonEnabled: false,
+                  myLocationEnabled: false,
+                  scrollGesturesEnabled: true,
+                  rotateGesturesEnabled: true,
+                  tiltGesturesEnabled: true,
+                  zoomGesturesEnabled: true,
                 ),
+              ),
+              Positioned(
+                left: 8,
+                bottom: 8,
+                child: _FullscreenHintChip(onTap: _openFullscreen),
               ),
               Positioned(
                 right: 8,
@@ -1146,6 +1233,71 @@ class _RouteMapState extends State<_RouteMap> {
                   busy: _locating,
                   tooltip: L10n.t(context, 'locateMe'),
                   onTap: _locateMe,
+                ),
+              ),
+              Positioned(
+                top: 8,
+                right: 8,
+                child: MapExpandButton(
+                  points: pts,
+                  originLabel: _originName(),
+                  destinationLabel: _destinationName(),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Opens the full-screen route map (all Google Maps functions available).
+  void _openFullscreen() {
+    final pts = _points;
+    if (pts.length < 2) return;
+    openFullscreenMap(
+      context,
+      points: pts,
+      originLabel: _originName(),
+      destinationLabel: _destinationName(),
+    );
+  }
+}
+
+/// Small "fullscreen" pill on the preview map so passengers know the map is
+/// interactive and can be expanded.
+class _FullscreenHintChip extends StatelessWidget {
+  final VoidCallback onTap;
+  const _FullscreenHintChip({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    return Material(
+      color: dark ? AppColors.surfaceDarkElevated : Colors.white,
+      borderRadius: BorderRadius.circular(99),
+      elevation: 3,
+      shadowColor: Colors.black.withValues(alpha: 0.28),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(99),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(
+                Icons.fullscreen_rounded,
+                size: 15,
+                color: AppColors.accent,
+              ),
+              const SizedBox(width: 5),
+              Text(
+                L10n.t(context, 'fullscreen'),
+                style: const TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.accent,
                 ),
               ),
             ],
@@ -1186,7 +1338,7 @@ class _TripSummary extends StatelessWidget {
                   borderRadius: BorderRadius.circular(99),
                 ),
                 child: Text(
-                  egFormat(trip.startTime, 'EEE, HH:mm'),
+                  egFormat(trip.startTime, 'EEE, h:mm a'),
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: AppColors.accent,
                     fontWeight: FontWeight.w800,
@@ -1316,12 +1468,18 @@ class _StopSelector extends StatelessWidget {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       const SheetHandle(),
-                      for (final s in stops)
-                        ListTile(
-                          title: Text(s.name),
-                          selected: s.id == value,
-                          onTap: () => Navigator.pop(ctx, s.id),
+                      Flexible(
+                        child: ListView.builder(
+                          shrinkWrap: true,
+                          itemCount: stops.length,
+                          itemBuilder:
+                              (_, i) => ListTile(
+                                title: Text(stops[i].name),
+                                selected: stops[i].id == value,
+                                onTap: () => Navigator.pop(ctx, stops[i].id),
+                              ),
                         ),
+                      ),
                       const SizedBox(height: 8),
                     ],
                   ),
@@ -1349,7 +1507,7 @@ class _StopSelector extends StatelessWidget {
                 Expanded(
                   child: Text(
                     current?.name ?? L10n.t(context, 'chooseStop'),
-                    maxLines: 1,
+                    maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
@@ -2238,6 +2396,179 @@ class _DateField extends StatelessWidget {
   }
 }
 
+/// Single/Recurring switch. Shown only for recurring and round trips: the
+/// recurring branch opens the full date-range + weekdays + tier card, while
+/// the single branch opens a one-day picker.
+class _ModeToggle extends StatelessWidget {
+  final bool single;
+  final ValueChanged<bool> onChanged;
+  const _ModeToggle({required this.single, required this.onChanged});
+
+  @override
+  Widget build(BuildContext context) {
+    return SoftCard(
+      padding: const EdgeInsets.all(4),
+      child: Row(
+        children: [
+          Expanded(
+            child: _pill(
+              context,
+              label: L10n.t(context, 'singleTrip'),
+              icon: Icons.event_available_rounded,
+              selected: single,
+              onTap: () => onChanged(false),
+            ),
+          ),
+          const SizedBox(width: 4),
+          Expanded(
+            child: _pill(
+              context,
+              label: L10n.t(context, 'recurringTrip'),
+              icon: Icons.repeat_rounded,
+              selected: !single,
+              onTap: () => onChanged(true),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _pill(
+    BuildContext context, {
+    required String label,
+    required IconData icon,
+    required bool selected,
+    required VoidCallback onTap,
+  }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final idle = isDark ? AppColors.textSecondary : AppColors.textSecondary;
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        curve: Curves.easeOutCubic,
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        decoration: BoxDecoration(
+          color: selected ? AppColors.accent : Colors.transparent,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, size: 16, color: selected ? Colors.white : idle),
+            const SizedBox(width: 6),
+            Flexible(
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w800,
+                  color: selected ? Colors.white : idle,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Single-day card for a recurring trip: pick one date and reserve a single
+/// occurrence of that recurring schedule.
+class _SingleDayCard extends StatelessWidget {
+  final DateTime? day;
+  final ValueChanged<DateTime?> onDay;
+  const _SingleDayCard({required this.day, required this.onDay});
+
+  static Future<DateTime?> _pickDate(
+    BuildContext context,
+    DateTime? current,
+  ) async {
+    final now = DateTime.now();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: current ?? now,
+      firstDate: now.subtract(const Duration(days: 1)),
+      lastDate: now.add(const Duration(days: 366)),
+    );
+    return picked;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final day = this.day;
+    return SoftCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(
+                Icons.event_available_rounded,
+                color: AppColors.accent,
+                size: 18,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                L10n.t(context, 'singleDaySchedule'),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            L10n.t(context, 'singleDaySub'),
+            style: const TextStyle(
+              fontSize: 12,
+              color: AppColors.textSecondary,
+            ),
+          ),
+          const SizedBox(height: 14),
+          _DateField(
+            label: L10n.t(context, 'date'),
+            value: day,
+            onPick: () async {
+              final picked = await _pickDate(context, day);
+              if (picked != null) onDay(picked);
+            },
+          ),
+          if (day != null) ...[
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Icon(
+                  Icons.schedule_rounded,
+                  size: 15,
+                  color: AppColors.accent.withValues(alpha: 0.8),
+                ),
+                const SizedBox(width: 7),
+                Expanded(
+                  child: Text(
+                    DateFormat(
+                      'EEEE · MMMM d',
+                    ).format(day) ,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
 /// Round-trip extras: the return leg pickup and drop-off stops, taken from
 /// the paired return trip. Only shown for `ROUND_TRIP` trips.
 class _ReturnLegCard extends StatelessWidget {
@@ -2281,7 +2612,7 @@ class _ReturnLegCard extends StatelessWidget {
           const SizedBox(height: 4),
           Text(
             '${L10n.t(context, 'returnLegSub')} · '
-            '${egFormat(returnTrip.startTime, 'EEE, HH:mm')}',
+            '${egFormat(returnTrip.startTime, 'EEE, h:mm a')}',
             style: const TextStyle(
               fontSize: 12,
               color: AppColors.textSecondary,
@@ -2358,12 +2689,18 @@ class _ReturnStop extends StatelessWidget {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       const SheetHandle(),
-                      for (final s in stops)
-                        ListTile(
-                          title: Text(s.name),
-                          selected: s.id == value,
-                          onTap: () => Navigator.pop(ctx, s.id),
+                      Flexible(
+                        child: ListView.builder(
+                          shrinkWrap: true,
+                          itemCount: stops.length,
+                          itemBuilder:
+                              (_, i) => ListTile(
+                                title: Text(stops[i].name),
+                                selected: stops[i].id == value,
+                                onTap: () => Navigator.pop(ctx, stops[i].id),
+                              ),
                         ),
+                      ),
                       const SizedBox(height: 8),
                     ],
                   ),
@@ -2388,7 +2725,7 @@ class _ReturnStop extends StatelessWidget {
                 Expanded(
                   child: Text(
                     display ?? L10n.t(context, 'chooseStop'),
-                    maxLines: 1,
+                    maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
                       fontSize: 12,

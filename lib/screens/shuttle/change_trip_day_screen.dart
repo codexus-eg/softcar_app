@@ -238,7 +238,7 @@ class _ChangeTripDayScreenState extends State<ChangeTripDayScreen> {
               ),
               const SizedBox(width: 6),
               Text(
-                '${DateFormat('EEE, MMM d · HH:mm').format(ticket.serviceDay)}'
+                '${DateFormat('EEE, MMM d · h:mm a').format(ticket.serviceDay)}'
                 '${ticket.isRecurring ? ' · ${L10n.t(context, 'recurring')}' : ''}',
                 style: const TextStyle(
                   fontSize: 13,
@@ -431,7 +431,7 @@ class _AlternativeTripCard extends StatelessWidget {
                 ),
                 const SizedBox(width: 4),
                 Text(
-                  egFormat(trip.startTime, 'EEE, MMM d · HH:mm'),
+                  egFormat(trip.startTime, 'EEE, MMM d · h:mm a'),
                   style: const TextStyle(
                     fontSize: 12,
                     color: AppColors.textSecondary,

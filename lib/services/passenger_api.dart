@@ -253,6 +253,17 @@ class PassengerApi {
     return json['data'] is List ? json['data'] as List : const [];
   }
 
+  /// The live fleet service classes created by the admin
+  /// (`GET /api/mobile/fleet-services`). Re-fetched on every trips refresh so
+  /// a newly created service instantly shows in the passenger app.
+  Future<List<dynamic>> getFleetServices() async {
+    final json = await _request('GET', '/fleet-services');
+    final data = json['services'];
+    if (data is List) return data;
+    final fallback = json['data'];
+    return fallback is List ? fallback : const [];
+  }
+
   /// Authoritative single-trip payload (with per-reservation seat + owner
   /// gender). Seat selection uses this so every reserved seat reflects the
   /// real reservation's gender regardless of which entry path supplied the
@@ -559,6 +570,25 @@ class PassengerApi {
     );
   }
 
+  /// Changes a RESERVED reservation's pickup/dropoff stops
+  /// (`POST /api/mobile/reservations/{id}/points`). Both points must belong
+  /// to the reservation's trip and the pickup stop must be ordered before
+  /// the dropoff stop. Returns `{success, message, record}`.
+  Future<Map<String, dynamic>> updateReservationPoints({
+    required String reservationId,
+    required String pickupPointId,
+    required String dropoffPointId,
+  }) async {
+    return _request(
+      'POST',
+      '/reservations/$reservationId/points',
+      body: {
+        'pickupPointId': pickupPointId,
+        'dropoffPointId': dropoffPointId,
+      },
+    );
+  }
+
   Future<Map<String, dynamic>> getWallet() async {
     return _request('GET', '/wallet/transactions');
   }
@@ -750,6 +780,12 @@ class PassengerApi {
     await _request('POST', '/account/referral', body: {'code': code});
   }
 
+  /// `GET /api/mobile/referral` — full referral page data: the passenger's own
+  /// code + share link, program settings, referral stats and reward history.
+  Future<Map<String, dynamic>> fetchReferral() async {
+    return _request('GET', '/referral');
+  }
+
   // ---- Where-to smart search --------------------------------------------
 
   /// `GET /api/mobile/trips/whereto` — searches every upcoming trip that can
@@ -773,6 +809,131 @@ class PassengerApi {
       if (maxResults != null) 'maxResults': '$maxResults',
     };
     return _request('GET', '/trips/whereto', query: query);
+  }
+
+  // ---- Suggest Trip -------------------------------------------------------
+
+  /// Google Places text search proxied by the server (`GET /api/maps/places`).
+  /// The Google key never ships in the app — it stays on the backend. Returns
+  /// `{placeId, name, address, lat, lng}` entries.
+  Future<List<Map<String, dynamic>>> searchPlaces(String query) async {
+    final uri = Uri.parse('$_origin/api/maps/places').replace(
+      queryParameters: {'q': query, 'language': 'en'},
+    );
+    final headers = _jsonHeaders()..remove('Authorization');
+    http.Response res;
+    try {
+      res = await http.get(uri, headers: headers);
+    } catch (_) {
+      throw PassengerApiException(
+        'Unable to reach the server. Check your connection.',
+        code: 'NETWORK_ERROR',
+      );
+    }
+    final decoded = _decode(res);
+    if (res.statusCode >= 400) {
+      throw PassengerApiException(
+        decoded is Map
+            ? (decoded['message'] ??
+                decoded['error'] ??
+                'Could not search places ($res.statusCode)')
+            : 'Could not search places ($res.statusCode)',
+        status: res.statusCode,
+      );
+    }
+    if (decoded is Map && decoded['data'] is Map) {
+      final results = (decoded['data'] as Map)['results'];
+      if (results is List) {
+        return results
+            .whereType<Map>()
+            .map((e) => Map<String, dynamic>.from(e))
+            .toList();
+      }
+    }
+    return const [];
+  }
+
+  /// Reverse-geocodes coordinates to a readable address
+  /// (`GET /api/maps/geocode/reverse`). Returns the address string or ''.
+  Future<String> reverseGeocode(double lat, double lng) async {
+    final uri = Uri.parse('$_origin/api/maps/geocode/reverse').replace(
+      queryParameters: {
+        'lat': lat.toStringAsFixed(6),
+        'lng': lng.toStringAsFixed(6),
+      },
+    );
+    final headers = _jsonHeaders()..remove('Authorization');
+    http.Response res;
+    try {
+      res = await http.get(uri, headers: headers);
+    } catch (_) {
+      return '';
+    }
+    if (res.statusCode >= 400) return '';
+    final decoded = _decode(res);
+    if (decoded is Map && decoded['data'] is Map) {
+      final address = (decoded['data'] as Map)['address'];
+      if (address is String) return address;
+    }
+    return '';
+  }
+
+  /// Submits a "Suggest Trip" demand — an origin/destination pair the user
+  /// wants to see served (`POST /api/mobile/suggest-trip`). The backend
+  /// aggregates these into demand clusters for the admin dashboard.
+  Future<Map<String, dynamic>> suggestTrip({
+    required Map<String, dynamic> origin,
+    required Map<String, dynamic> destination,
+    String? departureTimePreference,
+  }) async {
+    return _request(
+      'POST',
+      '/suggest-trip',
+      body: {
+        'origin': origin,
+        'destination': destination,
+        if (departureTimePreference != null && departureTimePreference.isNotEmpty)
+          'departureTimePreference': departureTimePreference,
+      },
+    );
+  }
+
+  /// The passenger's own suggest-trip requests with each one's live status
+  /// (`GET /api/mobile/suggest-trip`). Newest first; `resolvedTrip` is filled
+  /// on entries the backend already auto-resolved so the app can offer
+  /// one-tap booking.
+  Future<List<Map<String, dynamic>>> mySuggestions() async {
+    final json = await _request('GET', '/suggest-trip');
+    final list = json['suggestions'];
+    return list is List
+        ? list
+              .whereType<Map>()
+              .map((e) => Map<String, dynamic>.from(e))
+              .toList()
+        : const [];
+  }
+
+  /// Cancels a pending suggest-trip request (`DELETE /api/mobile/suggest-trip`
+  /// ?id=). Rejected once the backend has moved it off `PENDING`.
+  Future<Map<String, dynamic>> cancelSuggestion(String suggestionId) async {
+    return _request('DELETE', '/suggest-trip', query: {'id': suggestionId});
+  }
+
+  /// The admin-designed floor plan for a fleet class at a given seat count
+  /// (`GET /api/mobile/seat-designs`). Trips already carry `seatDesign`, so
+  /// this is only needed when rendering the manual design for a class/count
+  /// that wasn't attached to a trip payload.
+  Future<Map<String, dynamic>?> fetchSeatDesign({
+    required String serviceClassCode,
+    required int seatCount,
+  }) async {
+    final json = await _request(
+      'GET',
+      '/seat-designs',
+      query: {'serviceClassCode': serviceClassCode, 'seatCount': '$seatCount'},
+    );
+    final design = json['design'];
+    return design is Map ? Map<String, dynamic>.from(design) : null;
   }
 
   /// App-side push acknowledgement — tells the ops dashboard the FCM message
