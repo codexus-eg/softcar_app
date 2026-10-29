@@ -71,3 +71,7 @@
 
 # Exceptions to above rules.
 !**/ios/**/default.pbxuser
+
+# Node & Expo related
+node_modules/
+.expo/
